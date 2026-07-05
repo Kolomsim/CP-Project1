@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cp-backend
+    # Backend is internal — no ports exposed to host
+    # Accessible only via nginx reverse proxy
+    expose:
+      - '8000'
+    environment:
+      - APP_NAME=SmartCheck Недвижимость
+      - APP_VERSION=1.0.0
+      - CORS_ORIGINS=http://localhost
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RELOAD=False
+    restart: unless-stopped
+    networks:
+      - cp-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cp-frontend
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - cp-network
+
+networks:
+  cp-network:
+    driver: bridge
