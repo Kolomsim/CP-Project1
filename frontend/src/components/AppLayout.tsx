@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { AppShell, Container, Group, Text, ActionIcon } from '@mantine/core'
+import { IconGitCompare } from '@tabler/icons-react';
 
 type AppLayoutProps = {
   children: ReactNode
@@ -12,7 +13,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Group h="100%" px="md" justify="space-between">
           <Text fw={600}>Сервис по проверке недвижимости</Text>
           <Group gap="xs">
-            <ActionIcon variant="default" aria-label="Статистика" />
+            <ActionIcon variant="default" aria-label="Статистика" size="lg">
+              {<IconGitCompare stroke={1.5} />}</ActionIcon>
             <ActionIcon variant="default" aria-label="Избранное" />
             <ActionIcon variant="default" aria-label="Профиль" />
           </Group>
