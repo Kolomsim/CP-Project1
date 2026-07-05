@@ -12,7 +12,7 @@ import {
 import { AppLayout } from '../../components/AppLayout'
 
 const navCards = [
-  { title: 'Сопровождение сделки', to: '/' },
+  { title: 'Сопровождение сделки', to: '/deal' },
   { title: 'Риелторы', to: '/realtors' },
   { title: 'База знаний', to: '/kb' },
 ]

@@ -16,7 +16,7 @@ type StubLayoutProps = {
 }
 
 const navItems = [
-  { to: '/', label: 'Сопровождение сделки' },
+  { to: '/deal', label: 'Сопровождение сделки' },
   { to: '/kb', label: 'База знаний' },
   { to: '/comparison', label: 'Сравнение' },
 ]
@@ -28,8 +28,14 @@ export function StubLayout({ title, description }: StubLayoutProps) {
     <AppShell header={{ height: 64 }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Text fw={600} size="lg">
-            SmartCheck
+          <Text
+            component={Link}
+            to="/"
+            fw={600}
+            size="lg"
+            style={{ textDecoration: 'none', color: 'inherit' }}
+          >
+            Сервис по проверке недвижимости
           </Text>
           <Group gap="xs">
             {navItems.map(({ to, label }) => (
