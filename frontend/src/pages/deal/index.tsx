@@ -1,19 +1,40 @@
-import { Badge, Stack, Text, Title } from '@mantine/core'
+import { Button, Container, List, Text, ThemeIcon, Title } from '@mantine/core'
+import classes from './HeroContentLeft.module.css'
 import { AppLayout } from '../../components/AppLayout'
+import { IconCheck } from '@tabler/icons-react'
 
 export default function DealPage() {
   return (
     <AppLayout>
-      <Stack align="center" gap="md" ta="center" py="xl">
-        <Title order={1}>Сопровождение сделки</Title>
-        <Text c="dimmed" maw={520}>
-          Лендинг, многошаговая форма проверки, предпросмотр объекта, итоговый
-          рейтинг и избранное.
+      <div className={classes.hero}>
+      <Container className={classes.container} size="lg">
+        <Title className={classes.title} order={3} size="h4" mb="sm" mt="xl" fw="medium" ta="center">Заполните форму для релевантной проверки</Title>
+        <Text className={classes.description} size="xl" mt="xl" mb="xl">
+          Узнайте о скрытых рисках недвижимости за 5 минут
+          Ответьте на несколько вопросов о планируемой сделке. Наш алгоритм проанализирует вашу
+ситуацию, учтет данные ведомств и сформирует персональный отчет:
         </Text>
-        <Badge variant="light" color="violet" size="lg">
-          Страница-заглушка
-        </Badge>
-      </Stack>
+        <List
+          spacing="xs"
+          size="sm"
+          mb="xl" 
+          center
+          icon={
+            <ThemeIcon color="blue" size={20} radius="xl">
+              <IconCheck size={12} stroke={1.5} />
+            </ThemeIcon>
+          }
+        >
+          <List.Item>Карта рисков: проверка на скрытых жильцов, маткапитал, суды и долги продавца.</List.Item>
+          <List.Item>Экологический радар: разметка промзон, свалок и шумных дорог вокруг объекта.</List.Item>
+          <List.Item>Пошаговый чек-лист: индивидуальный список документов именно для вашей сделки.</List.Item>
+        </List>
+
+        <Button variant="solid" size="xl" radius="md" className={classes.control}>
+          Начать
+        </Button>
+      </Container>
+    </div>
     </AppLayout>
   )
 }

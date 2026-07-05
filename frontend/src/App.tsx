@@ -5,6 +5,7 @@ import DealPage from './pages/deal'
 import KbPage from './pages/kb'
 import ComparisonPage from './pages/comparison'
 import FavoritesPage from './pages/favorites'
+import { AuthPage } from './pages/auth'
 
 function NotFound() {
   return (
@@ -25,6 +26,7 @@ function App() {
       <Route path="/kb" element={<KbPage />} />
       <Route path="/comparison" element={<ComparisonPage />} />
       <Route path="/favorites" element={<FavoritesPage />} />
+      <Route path="/auth" element={<AuthPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )
