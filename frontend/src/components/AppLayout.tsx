@@ -41,7 +41,13 @@ export function AppLayout({ children }: AppLayoutProps) {
             >
               <IconHeart stroke={1.5} />
             </ActionIcon>
-            <ActionIcon variant="default" aria-label="Профиль" size="lg">
+            <ActionIcon 
+              variant="default" 
+              aria-label="Профиль" 
+              size="lg"
+              component={Link}
+              to="/auth"
+              >
               <IconUser stroke={1.5} />
             </ActionIcon>
 
