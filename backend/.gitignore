@@ -2,6 +2,7 @@
 
 venv/
 env/
+.env/
 .venv/
 venv/
 ENV/
@@ -46,3 +47,4 @@ coverage.xml
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.gigacode.plans

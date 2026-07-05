@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from typing import Optional
 
 load_dotenv()
 
@@ -12,5 +13,28 @@ class Config:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", 8000))
     RELOAD: bool = os.getenv("RELOAD", "True").lower() == "true"
+
+    # Федресурс (банкротство)
+    FEDRESURS_API_URL: str = os.getenv("FEDRESURS_API_URL", "https://fedresurs.ru/api/v1")
+    FEDRESURS_API_KEY: Optional[str] = os.getenv("FEDRESURS_API_KEY", None)
+    FEDRESURS_TIMEOUT: int = int(os.getenv("FEDRESURS_TIMEOUT", 10))  # секунд
+
+    # ФССП (долги)
+    FSSP_API_URL: str = os.getenv("FSSP_API_URL", "https://api.fssp.gov.ru/v1")
+    FSSP_API_KEY: Optional[str] = os.getenv("FSSP_API_KEY", None)
+    FSSP_TIMEOUT: int = int(os.getenv("FSSP_TIMEOUT", 10))
+
+    # Росреестр (выписка ЕГРН) — обычно нужна ЭЦП, но для демонстрации сделаем заглушку
+    ROSREESTR_API_URL: str = os.getenv("ROSREESTR_API_URL", "https://rosreestr.ru/api/v1")
+    ROSREESTR_API_KEY: Optional[str] = os.getenv("ROSREESTR_API_KEY", None)
+    ROSREESTR_TIMEOUT: int = int(os.getenv("ROSREESTR_TIMEOUT", 15))
+
+    # Кэширование
+    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", 3600))  # 1 час
+    USE_REDIS: bool = os.getenv("USE_REDIS", "False").lower() == "true"
+    REDIS_URL: Optional[str] = os.getenv("REDIS_URL", None)
+
+    # Флаг использования моков (для разработки, но в проде = False)
+    USE_MOCK_EXTERNAL_API: bool = os.getenv("USE_MOCK_EXTERNAL_API", "False").lower() == "true"
 
 config = Config()
