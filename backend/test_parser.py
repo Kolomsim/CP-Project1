@@ -16,7 +16,7 @@ class ParserError(Exception):
 
 
 class CianListingParser:
-    """Парсер для отдельных объявлений ЦИАН"""
+    """Парсер для отдельных объявлений ЦИАН без Selenium"""
 
     def __init__(self):
         self.session = requests.Session(impersonate="chrome120")
@@ -661,3 +661,7 @@ def _get_mock_property_data(platform: str, obj_id: str, url: str) -> Dict[str, A
         "description": "Отличная квартира в центре города.",
         "is_verified": False,
     }
+
+
+with open('flat_data.json', 'a+', encoding='utf-8') as f:
+    json.dump(parse_property_url("https://shchyolkovo.cian.ru/sale/flat/325086411/?mlSearchSessionGuid=a185c846b5bc9bb86dde2df2d818d100&context=4.khUr_FZ3ryY.sZt_uHPTiu4-ECkxT62mkSmFbtrHgpJVv1IdvATdkWdNeMHxzarHoKxh1tthcPsigRuS5lbAz__HcTnTjK0GkGGgS1eYD8vcjMi7hpEjcc7dfTO5nYGs_gA"), f, ensure_ascii=False, indent=2)

@@ -47,4 +47,5 @@ coverage.xml
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.gigacode.plans
+.gigacode/plans
+.gigacode

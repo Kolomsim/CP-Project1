@@ -51,7 +51,7 @@ async def check_all_risks(
     # Обрабатываем результаты
     bankruptcy_data = results[0]
     fssp_data = results[1]
-    arrest_data = results[2]
+    # arrest_data = results[2]  # Закомментировано, так как check_arrests отсутствует в tasks
 
     # Формируем риски
     if bankruptcy_data and isinstance(bankruptcy_data, dict) and bankruptcy_data.get("is_bankrupt"):
@@ -74,15 +74,7 @@ async def check_all_risks(
             "details": f"Количество дел: {len(fssp_data.get('cases', []))}"
         })
 
-    if arrest_data and isinstance(arrest_data, dict) and arrest_data.get("has_arrest"):
-        risks.append({
-            "type": "arrest",
-            "severity": RiskLevel.CRITICAL,
-            "title": "Арест или обременение",
-            "description": "На объект наложен арест или зарегистрировано обременение.",
-            "recommendation": "НЕ РЕКОМЕНДУЕТСЯ покупать объект до снятия ареста.",
-            "details": f"Обременения: {arrest_data.get('details')}"
-        })
+    # arrest_data отсутствует, поэтому проверка arrest удалена
 
     # # Дополнительные локальные проверки (без внешних API) — например, маткапитал, наследство
     # # Здесь можно добавить проверку по адресу через локальную базу данных, но пока заглушка
@@ -119,7 +111,7 @@ async def check_all_risks(
         "required_documents": required_documents,
         "risk_count": len(risks),
         "critical_count": len(critical) + len(high),
-        "check_date": datetime.now().isoformat()
+        "check_date": datetime.datetime.now().isoformat()
     }
 
 

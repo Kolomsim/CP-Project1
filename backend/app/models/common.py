@@ -17,10 +17,10 @@ class Citizenship(str, Enum):
     KAZAKHSTAN = "Казахстан"
 
 class FamilyStatus(str, Enum):
-    SINGLE = "холост"
-    MARRIED = "женат/замужем"
+    SINGLE = "Холост"
+    MARRIED = "Женат/Замужем"
 
 class DealType(str, Enum):
-    MORTRAGE = "ипотека"
-    IMMEDIATELY = "сразу"
-    LOAN = "кредит"
+    MORTRAGE = "Ипотека"
+    IMMEDIATELY = "Сразу"
+    LOAN = "Кредит"

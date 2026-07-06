@@ -4,11 +4,8 @@ import phonenumbers
 
 
 SUPPORTED_PLATFORMS = {
-    "cian.ru": "ЦИАН",
-    "avito.ru": "Авито",
-    "domclick.ru": "Домклик",
-    "yandex.ru": "Яндекс.Недвижимость",
-    "smartcheck.ru": "SmartCheck",  # для тестов
+    "cian": "ЦИАН",
+    "domclick": "Домклик"
 }
 
 def validate_url(url: str) -> bool:
@@ -22,15 +19,17 @@ def validate_url(url: str) -> bool:
         parsed = urlparse(url)
     except Exception:
         return False
-
+    
     if not parsed.scheme or not parsed.netloc:
-        return False
+        return False  
+      
 
     netloc = parsed.netloc.lower()
 
-    domain = netloc.split(":")[0]
-
-    return domain in SUPPORTED_PLATFORMS.keys()
+    if (netloc.split(".")[0] in SUPPORTED_PLATFORMS) or (netloc.split(".")[1] in SUPPORTED_PLATFORMS):
+      return True
+    else:
+      return False
 
 def detect_platform(url: str) -> str | None:
     """
@@ -47,49 +46,47 @@ def detect_platform(url: str) -> str | None:
     if not parsed.netloc:
         return None
 
-    domain = parsed.netloc.lower().split(":")[0].removeprefix("www.")
-    return SUPPORTED_PLATFORMS.get(domain)
+    domain = parsed.netloc.lower().split(".")[0].removeprefix("www.")
+    if parsed.netloc.lower().split(".")[0].removeprefix("www.") in SUPPORTED_PLATFORMS:
+      return parsed.netloc.lower().split(".")[0].removeprefix("www.")
+    elif parsed.netloc.lower().split(".")[1].removeprefix("www.") in SUPPORTED_PLATFORMS:
+      return parsed.netloc.lower().split(".")[1].removeprefix("www.")
+    else:
+      return None
 
 
 def extract_id_cian(url: str) -> str | None:
     m = re.search(r'/sale/(?:flat|room|house|land)/([0-9]+)', url)
     return m.group(1) if m else None
+  
+def extract_id_domclick(url: str) -> str | None:
+    m = re.search(r'/card/sale__flat__([0-9]+)', url)
+    return m.group(1) if m else None
 
-def extract_id_avito(url: str) -> str | None:
-    # разные варианты Avito
-    patterns = [
-        r'/item/([0-9]+)',
-        r'i([0-9]+)\.htm',
-        r'/([0-9]+)$',
-    ]
-    for p in patterns:
-        m = re.search(p, url)
-        if m:
-            return m.group(1)
-    return None
+# def extract_id_avito(url: str) -> str | None:
+#     # разные варианты Avito
+#     patterns = [
+#         r'/item/([0-9]+)',
+#         r'i([0-9]+)\.htm',
+#         r'/([0-9]+)$',
+#     ]
+#     for p in patterns:
+#         m = re.search(p, url)
+#         if m:
+#             return m.group(1)
+#     return None
 
-def extract_id_from_url_smart(url: str) -> str | None:
+def extract_id_from_url(url: str) -> str | None:
     if not url:
         return None
 
-    platform = detect_platform(url)  
-    if platform == "ЦИАН":
+    platform = detect_platform(url) 
+    if SUPPORTED_PLATFORMS.get(platform, "") == "ЦИАН":
         return extract_id_cian(url)
-    elif platform == "Авито":
-        return extract_id_avito(url)
-
-    patterns = [
-        r'/(\d+)/?$',
-        r'/id(\d+)',
-        r'_(\d+)$',
-    ]
-    for p in patterns:
-        m = re.search(p, url)
-        if m:
-            return m.group(1)
-    return None
-
-
+    elif SUPPORTED_PLATFORMS.get(platform, "") == "Домклик":
+        return extract_id_domclick(url)
+    else:
+      return None
 
 def validate_phone(phone: str) -> bool:
     try:
