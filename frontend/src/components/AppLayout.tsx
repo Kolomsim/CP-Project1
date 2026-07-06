@@ -41,16 +41,15 @@ export function AppLayout({ children }: AppLayoutProps) {
             >
               <IconHeart stroke={1.5} />
             </ActionIcon>
-            <ActionIcon 
-              variant="default" 
-              aria-label="Профиль" 
-              size="lg"
+            <ActionIcon
               component={Link}
               to="/auth"
-              >
+              variant="default"
+              aria-label="Профиль"
+              size="lg"
+            >
               <IconUser stroke={1.5} />
             </ActionIcon>
-
           </Group>
         </Group>
       </AppShell.Header>
@@ -63,6 +62,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Text size="sm" c="dimmed" ta="center">
           © 2026 SmartCheck Недвижимость — сервис анализа рисков при покупке и
           продаже жилья для физических лиц.
+        </Text>
+        <Text size="sm" c="dimmed" ta="center">
+          Информация, размещённая на данном сайте, носит исключительно общий информационный и справочный характер, не является юридической консультацией, заключением специалиста либо индивидуальной рекомендацией, направленной на принятие конкретного решения в отношении Вашей ситуации.
         </Text>
       </AppShell.Footer>
     </AppShell>

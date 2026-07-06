@@ -2,10 +2,12 @@ import { Route, Routes } from 'react-router'
 import { Container, Stack, Text, Title } from '@mantine/core'
 import HomePage from './pages/home'
 import DealPage from './pages/deal'
+import DealFormPage from './pages/deal/deal_form'
 import KbPage from './pages/kb'
 import ComparisonPage from './pages/comparison'
 import FavoritesPage from './pages/favorites'
 import { AuthPage } from './pages/auth'
+import PrivacyPage from './pages/privacy_policy/privacy_policy'
 
 function NotFound() {
   return (
@@ -23,10 +25,12 @@ function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/deal" element={<DealPage />} />
+      <Route path="/deal/deal_form" element={<DealFormPage />} />
       <Route path="/kb" element={<KbPage />} />
       <Route path="/comparison" element={<ComparisonPage />} />
       <Route path="/favorites" element={<FavoritesPage />} />
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )
