@@ -1,4 +1,4 @@
-import { Button, Container, List, Text, ThemeIcon, Title } from '@mantine/core'
+import { Anchor, Button, Container, List, Text, ThemeIcon, Title } from '@mantine/core'
 import classes from './HeroContentLeft.module.css'
 import { AppLayout } from '../../components/AppLayout'
 import { IconCheck } from '@tabler/icons-react'
@@ -36,10 +36,15 @@ export default function DealPage() {
           <Button variant="solid" size="xl" radius="md" component={Link} to="/deal/deal_form">
             Начать
           </Button>
-
-          <Text className={classes.description} size="sm" mt="xl" mb="xl">
-            нажимая далее, вы соглашаетесь на обработку персональных данных
-          </Text>
+          
+          <div>
+            <Text className={classes.description} size="sm" mt="xl" mb="xl">
+              нажимая далее, вы соглашаетесь на обработку ваших {' '}
+              <Anchor href="/privacy" target="_blank" inherit underline='always'>
+              персональных данных
+              </Anchor>
+            </Text>
+          </div>
         </Container>
       </div>
     </AppLayout>

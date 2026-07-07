@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { Button, Container, Paper, Select, Stack, Title } from '@mantine/core'
 import { AppLayout } from '../../../components/AppLayout'
 
@@ -92,6 +93,8 @@ export default function DealFormPage() {
               fullWidth
               size="md"
               mt="xl"
+              component={Link}
+              to="/deal/deal_object"
               onClick={handleSubmit}
               disabled={!citizenship || !maritalStatus || !purchaseMethod}
             >

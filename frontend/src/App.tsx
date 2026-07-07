@@ -3,6 +3,8 @@ import { Container, Stack, Text, Title } from '@mantine/core'
 import HomePage from './pages/home'
 import DealPage from './pages/deal'
 import DealFormPage from './pages/deal/deal_form'
+import DealObjectPage from './pages/deal/deal_object'
+import DealResultPage from './pages/deal/deal_result'
 import KbPage from './pages/kb'
 import ComparisonPage from './pages/comparison'
 import FavoritesPage from './pages/favorites'
@@ -26,6 +28,8 @@ function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/deal" element={<DealPage />} />
       <Route path="/deal/deal_form" element={<DealFormPage />} />
+      <Route path="/deal/deal_object" element={<DealObjectPage />} />
+      <Route path="/deal/deal_result" element={<DealResultPage />} />
       <Route path="/kb" element={<KbPage />} />
       <Route path="/comparison" element={<ComparisonPage />} />
       <Route path="/favorites" element={<FavoritesPage />} />
