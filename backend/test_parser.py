@@ -38,14 +38,12 @@ class CianListingParser:
     def parse_listing(self, url: str) -> Dict[str, Any]:
         """Парсит объявление с использованием requests"""
         try:
-            # Загружаем страницу
             response = self.session.get(url, timeout=30)
             response.raise_for_status()
             
             html = response.text
             soup = BeautifulSoup(html, 'html.parser')
             
-            # Извлекаем данные
             data = self._extract_data(soup, html, url)
             
             return data
@@ -57,172 +55,290 @@ class CianListingParser:
             logger.error(f"Ошибка парсинга ЦИАН: {e}")
             raise Exception(f"Не удалось спарсить объявление: {str(e)}")
     
+    @staticmethod
+    def _merge_missing(data: Dict[str, Any], new_data: Dict[str, Any]) -> None:
+        """Дополняет data значениями из new_data, не перезаписывая уже найденное.
+        Для вложенных dict (например, seller) сливает на уровне подключей —
+        иначе более слабый источник мог бы целиком затереть частично
+        заполненный seller из более надёжного источника (cianConfig)."""
+        for key, value in new_data.items():
+            if key not in data:
+                data[key] = value
+            elif isinstance(data[key], dict) and isinstance(value, dict):
+                for sub_key, sub_value in value.items():
+                    data[key].setdefault(sub_key, sub_value)
+
     def _extract_data(self, soup: BeautifulSoup, html: str, url: str) -> Dict[str, Any]:
-        """Извлекает данные из HTML"""
-        data = {}
-        
-        # 1. Извлекаем из __NEXT_DATA__ (основной источник - полная информация)
-        next_data = self._extract_from_next_data(soup)
-        data.update(next_data)
-        
-        # 2. Извлекаем из JSON-LD (цена, название, описание)
-        json_ld_data = self._extract_from_json_ld(soup)
-        data.update(json_ld_data)
-        
-        # 3. Извлекаем из встроенного JSON в script тегах (аналитика)
-        inline_json_data = self._extract_from_inline_json(soup, html)
-        data.update(inline_json_data)
-        
-        # 4. Извлекаем из OpenGraph мета-тегов (этаж, комнаты, адрес)
-        og_data = self._extract_from_opengraph(soup)
-        data.update(og_data)
-        
-        # 5. Извлекаем из HTML разметки (дополнительные данные)
-        html_data = self._extract_from_html(soup, html, url)
-        data.update(html_data)
-        
+        """Извлекает данные из HTML, комбинируя источники по надёжности."""
+        data: Dict[str, Any] = {}
+
+        # 1. window._cianConfig — самый надёжный источник (координаты, адрес,
+        #    площади, цена, продавец).
+        #    БЫЛО: сюда попадал ПОЛНЫЙ результат _extract_from_cian_config
+        #    (включая seller с accountType/companyName, price, площади...),
+        #    но наверх пробрасывалась только 'location' — всё остальное
+        #    отбрасывалось (`coordinates.get("location", "")`, а не
+        #    `data.update(cian_config_data)`). Поэтому accountType/companyName
+        #    извлекались правильно ВНУТРИ метода, но никогда не долетали до
+        #    финального результата. Теперь мёржим весь словарь целиком.
+        cian_config_data = self._extract_from_cian_config(html)
+        data.update(cian_config_data)
+        if 'location' in data:
+            data['coordinates'] = data.pop('location')
+
+        # 2-5. Остальные источники ТОЛЬКО дополняют то, чего ещё не нашли —
+        # не перезаписывают уже найденные, более надёжные данные из cianConfig.
+        for extractor in (
+            lambda: self._extract_from_json_ld(soup),
+            lambda: self._extract_from_inline_json(soup, html),
+            lambda: self._extract_from_opengraph(soup),
+            lambda: self._extract_from_html(soup, html, url),
+        ):
+            self._merge_missing(data, extractor())
+
+        data.pop('location', None)
+
         return data
     
-    def _extract_from_next_data(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Извлекает данные из __NEXT_DATA__ (основной источник информации о продавце)"""
-        data = {}
-        
-        script = soup.find('script', id='__NEXT_DATA__')
-        if not script or not script.string:
-            return data
-        
+    @staticmethod
+    def _extract_account_info(text: str) -> Dict[str, str]:
+        """Извлекает accountType и companyName независимо друг от друга.
+
+        Раньше был один regex, требующий:
+          - непустое значение (`[^"]+` — а на странице бывает `"accountType":""`),
+          - строгую склейку 'accountType сразу через запятую companyName' —
+            падает, если между ключами есть другие поля или порядок ключей обратный.
+        Ищем каждое поле отдельно через `[^"]*` (в т.ч. пустая строка — валидный матч).
+        """
+        account_type_match = re.search(r'"accountType"\s*:\s*"([^"]*)"', text)
+        company_name_match = re.search(r'"companyName"\s*:\s*"([^"]*)"', text)
+
+        return {
+            'account_type': account_type_match.group(1) if account_type_match else 'owner',
+            'company_name': company_name_match.group(1) if company_name_match else '',
+        }
+
+    @staticmethod
+    def _extract_balanced(text: str, start_idx: int) -> Optional[str]:
+        """Возвращает сбалансированную подстроку text[start_idx:...], начиная с
+        '{' или '[', до соответствующей закрывающей скобки — с учётом вложенности
+        и содержимого строк (чтобы скобки внутри "..." не сбивали счётчик).
+
+        Раньше вместо этого использовались нежадные regex вида `(\\{.*?\\})` /
+        `(\\[.*?\\])`. На глубоко вложенном JSON (а `offer` у ЦИАН именно такой)
+        `.*?` останавливается на ПЕРВОЙ попавшейся закрывающей скобке — почти
+        всегда внутри вложенного объекта, а не в конце нужного блока. В итоге
+        в offer_str/config_str попадал обрезанный, невалидный фрагмент, и все
+        дальнейшие regex по нему (totalArea, price, accountType и т.д.)
+        закономерно ничего не находили — независимо от того, насколько точен
+        сам regex для конкретного поля.
+        """
+        if start_idx >= len(text) or text[start_idx] not in '{[':
+            return None
+        depth = 0
+        in_string = False
+        escape = False
+        for i in range(start_idx, len(text)):
+            ch = text[i]
+            if in_string:
+                if escape:
+                    escape = False
+                elif ch == '\\':
+                    escape = True
+                elif ch == '"':
+                    in_string = False
+                continue
+            if ch == '"':
+                in_string = True
+            elif ch in '{[':
+                depth += 1
+            elif ch in '}]':
+                depth -= 1
+                if depth == 0:
+                    return text[start_idx:i + 1]
+        return None
+
+    def _extract_json_value_by_key(self, text: str, key_name: str) -> Any:
+        """В массиве вида [{"key":"...", "value": ...}, ...] находит элемент
+        с заданным key_name и возвращает его 'value', уже распарсенным как JSON."""
+        m = re.search(
+            r'"key"\s*:\s*"' + re.escape(key_name) + r'"\s*,\s*"value"\s*:\s*',
+            text,
+        )
+        if not m:
+            return None
+        value_start = m.end()
+        value_str = self._extract_balanced(text, value_start)
+        if not value_str:
+            return None
         try:
-            json_data = json.loads(script.string)
-            props = json_data.get('props', {})
-            page_props = props.get('pageProps', {})
-            
-            # Пробуем разные пути к данным (структура может меняться)
-            offer_data = None
-            
-            # Путь 1: bffData.offer
-            bff_data = page_props.get('bffData', {})
-            if bff_data:
-                offer_data = bff_data.get('offer', {})
-            
-            # Путь 2: initialState.offerData.offer
-            if not offer_data:
-                initial_state = page_props.get('initialState', {})
-                offer_data_wrapper = initial_state.get('offerData', {})
-                offer_data = offer_data_wrapper.get('offer', {})
-            
-            # Путь 3: initialData.offerData.offer
-            if not offer_data:
-                initial_data = page_props.get('initialData', {})
-                offer_data_wrapper = initial_data.get('offerData', {})
-                offer_data = offer_data_wrapper.get('offer', {})
-            
-            if not offer_data:
-                return data
-            
-            # Извлекаем основную информацию
-            data['total_area'] = float(offer_data.get('totalArea', 0) or 0)
-            data['living_area'] = float(offer_data.get('livingArea', 0) or 0)
-            data['kitchen_area'] = float(offer_data.get('kitchenArea', 0) or 0)
-            data['floor'] = offer_data.get('floorNumber', 0) or 0
-            data['rooms'] = offer_data.get('roomsCount', 0) or 0
-            
-            # Этажность здания
-            building = offer_data.get('building', {})
-            if building:
-                data['total_floors'] = building.get('floorsTotal', 0) or 0
-            
-            # Описание
-            if not data.get('description'):
-                data['description'] = offer_data.get('description', '')
-            
-            # Цена
-            bargain_terms = offer_data.get('bargainTerms', {})
-            if bargain_terms:
-                price = bargain_terms.get('price')
-                if price:
-                    data['price'] = int(price)
-            
-            # Адрес и гео
-            geo = offer_data.get('geo', {})
-            if geo:
-                address_string = geo.get('addressString', '')
-                if address_string:
-                    data['address'] = address_string
-                    if 'location' not in data:
-                        data['location'] = {}
-                    data['location']['address'] = address_string
-                
-                coordinates = geo.get('coordinates', {})
-                if coordinates:
-                    if 'location' not in data:
-                        data['location'] = {}
-                    data['location']['lat'] = coordinates.get('lat', 0.0)
-                    data['location']['lon'] = coordinates.get('lng', 0.0)
-            
-            # ===== ИНФОРМАЦИЯ О ПРОДАВЦЕ =====
-            # Ищем в разных местах
-            agent_data = None
-            
-            # Путь 1: offer.agent
-            if 'agent' in offer_data:
-                agent_data = offer_data['agent']
-            
-            # Путь 2: offer.seller
-            if not agent_data and 'seller' in offer_data:
-                agent_data = offer_data['seller']
-            
-            # Путь 3: bffData.agent (отдельный блок)
-            if not agent_data and bff_data and 'agent' in bff_data:
-                agent_data = bff_data['agent']
-            
-            # Путь 4: offerData.agent
-            if not agent_data:
-                initial_state = page_props.get('initialState', {})
-                offer_data_wrapper = initial_state.get('offerData', {})
-                if 'agent' in offer_data_wrapper:
-                    agent_data = offer_data_wrapper['agent']
-            
-            if agent_data:
-                if 'seller' not in data:
-                    data['seller'] = {}
-                
-                # Имя продавца
-                name = agent_data.get('name') or agent_data.get('displayName') or agent_data.get('agentName')
-                if name:
-                    data['seller']['name'] = name
-                
-                # Телефон
-                phone = agent_data.get('phone') or agent_data.get('phones', [None])[0] if isinstance(agent_data.get('phones'), list) else agent_data.get('phone')
-                if phone:
-                    data['seller']['phone'] = phone
-                
-                # Тип продавца (собственник/агентство/застройщик)
-                seller_type = agent_data.get('type') or agent_data.get('agentType') or agent_data.get('sellerType')
-                if seller_type:
-                    data['seller']['type'] = self._map_seller_type(seller_type)
-                
-                # ID агента/компании
-                agent_id = agent_data.get('id') or agent_data.get('agentId')
-                if agent_id:
-                    data['seller']['id'] = agent_id
-                
-                # Название компании (если продает агентство/застройщик)
-                company_name = agent_data.get('organizationName') or agent_data.get('companyName')
-                if company_name:
-                    data['seller']['company_name'] = company_name
-                
-                # Фото агента
-                avatar = agent_data.get('avatarUrl') or agent_data.get('photo')
-                if avatar:
-                    data['seller']['avatar_url'] = avatar
-            
-        except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
-            logger.debug(f"Ошибка при разборе __NEXT_DATA__: {e}")
-        
+            return json.loads(value_str)
+        except json.JSONDecodeError as e:
+            logger.debug(f"Не удалось распарсить value для key={key_name}: {e}")
+            return None
+
+    def _apply_offer_fields(self, data: Dict[str, Any], offer: Dict[str, Any], agent: Optional[Dict[str, Any]] = None) -> None:
+        """Раскладывает уже распарсенные dict offer/agent по полям итогового data.
+
+        ВАЖНО (актуальная схема ЦИАН на 07.2026, проверено на реальном HTML):
+        - price лежит НЕ в offer.price, а в offer.bargainTerms.price
+        - этажность здания лежит НЕ в offer.floorsTotal, а в offer.building.floorsCount
+        - agent — это СОСЕД offer (defaultState.offerData.agent), а не offer.agent
+        - реальный телефон лежит в offer.phones[0], а не в agent.phones
+          (там только {"confirmed": true/false}, без номера)
+        """
+        agent = agent or {}
+
+        geo = offer.get('geo') or {}
+        coordinates = geo.get('coordinates') or {}
+        if coordinates.get('lat') is not None and coordinates.get('lng') is not None:
+            try:
+                data['location'] = {
+                    'lat': float(coordinates['lat']),
+                    'lon': float(coordinates['lng']),
+                }
+            except (TypeError, ValueError):
+                pass
+
+        address_list = geo.get('address') or []
+        names = [
+            item.get('fullName') for item in address_list
+            if isinstance(item, dict) and item.get('fullName')
+        ]
+        if names:
+            data['address'] = ', '.join(names)
+            data.setdefault('location', {})['address'] = data['address']
+
+        def _num(source: Dict[str, Any], key: str, cast):
+            val = source.get(key)
+            if val is None:
+                return None
+            try:
+                return cast(val)
+            except (TypeError, ValueError):
+                return None
+
+        for src_key, target, cast in (
+            ('totalArea', 'total_area', float),
+            ('livingArea', 'living_area', float),
+            ('kitchenArea', 'kitchen_area', float),
+            ('floorNumber', 'floor', int),
+            ('roomsCount', 'rooms', int),
+        ):
+            val = _num(offer, src_key, cast)
+            if val is not None:
+                data[target] = val
+
+        # Цена — вложена в bargainTerms
+        price = _num(offer.get('bargainTerms') or {}, 'price', int)
+        if price is not None:
+            data['price'] = price
+
+        # Этажность здания — вложена в building.floorsCount
+        total_floors = _num(offer.get('building') or {}, 'floorsCount', int)
+        if total_floors is not None:
+            data['total_floors'] = total_floors
+
+        if offer.get('description'):
+            data['description'] = offer['description']
+
+        # Реальный контактный телефон — в offer.phones, не в agent.phones
+        phone_str = None
+        phones = offer.get('phones') or []
+        if phones and isinstance(phones[0], dict) and phones[0].get('number'):
+            phone_str = f"{phones[0].get('countryCode', '')}{phones[0]['number']}"
+
+        # Продавец: agent — сосед offer, не его часть
+        seller: Dict[str, Any] = {}
+        if agent.get('accountType'):
+            seller['type'] = self._map_seller_type(agent['accountType'])
+        if agent.get('companyName'):
+            seller['company_name'] = agent['companyName']
+        if agent.get('name'):
+            seller['name'] = agent['name']
+        if phone_str:
+            seller['phone'] = phone_str
+
+        if seller:
+            data['seller'] = seller
+
+    def _extract_from_cian_config_fallback(self, array_str: str) -> Dict[str, Any]:
+        """Резервный путь на случай, если offerData не распарсился как валидный
+        JSON (например, ЦИАН поменял структуру). Работает по ПОЛНОМУ array_str
+        (а не по обрезанному фрагменту, как раньше), поэтому шансы найти
+        координаты/продавца выше, чем в прежней версии.
+        """
+        data: Dict[str, Any] = {}
+
+        coord_match = re.search(
+            r'"coordinates"\s*:\s*\{\s*"lat"\s*:\s*([0-9.\-]+)\s*,\s*"lng"\s*:\s*([0-9.\-]+)\s*\}',
+            array_str,
+        )
+        if coord_match:
+            data['location'] = {
+                'lat': float(coord_match.group(1)),
+                'lon': float(coord_match.group(2)),
+            }
+
+        account_info = self._extract_account_info(array_str)
+        seller = {}
+        if account_info['account_type']:
+            seller['type'] = self._map_seller_type(account_info['account_type'])
+        if account_info['company_name']:
+            seller['company_name'] = account_info['company_name']
+        if seller:
+            data['seller'] = seller
+
+        return data
+
+    def _extract_from_cian_config(self, html: str) -> Dict[str, Any]:
+        """Извлекает данные из window._cianConfig['frontend-offer-card'].
+
+        Раньше вся цепочка (config -> offerData.value -> offer -> agent) держалась
+        на нежадных regex для границ JSON-объектов, которые почти всегда обрезали
+        вложенные структуры (см. _extract_balanced). Теперь границы ищутся
+        подсчётом баланса скобок, а содержимое читается через json.loads — то
+        есть работаем с реальным распарсенным dict, а не гадаем regex'ом по
+        каждому полю в потенциально обрезанном тексте.
+        """
+        data: Dict[str, Any] = {}
+
+        anchor = re.search(
+            r"window\._cianConfig\['frontend-offer-card'\]\s*=\s*"
+            r"\(window\._cianConfig\['frontend-offer-card'\]\s*\|\|\s*\[\]\)\.concat\(",
+            html,
+        )
+        if not anchor:
+            return data
+
+        array_start = html.find('[', anchor.end() - 1)
+        if array_start == -1:
+            return data
+
+        array_str = self._extract_balanced(html, array_start)
+        if not array_str:
+            logger.debug("Не удалось сбалансированно извлечь массив _cianConfig")
+            return data
+
+        try:
+            state = self._extract_json_value_by_key(array_str, 'defaultState')
+            offer_data = state.get('offerData') if isinstance(state, dict) else None
+
+            offer = offer_data.get('offer') if isinstance(offer_data, dict) else None
+            agent = offer_data.get('agent') if isinstance(offer_data, dict) else None
+
+            if not isinstance(offer, dict):
+                return self._extract_from_cian_config_fallback(array_str)
+
+            self._apply_offer_fields(data, offer, agent if isinstance(agent, dict) else None)
+
+        except Exception as e:
+            logger.debug(f"Ошибка при разборе cianConfig: {e}")
+
         return data
     
     def _extract_from_json_ld(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Извлекает данные из JSON-LD разметки (Product)"""
+        """Извлекает данные из JSON-LD разметки"""
         data = {}
         
         scripts = soup.find_all('script', type='application/ld+json')
@@ -262,10 +378,9 @@ class CianListingParser:
         return data
     
     def _extract_from_inline_json(self, soup: BeautifulSoup, html: str) -> Dict[str, Any]:
-        """Извлекает данные из встроенных JSON в script тегах (аналитика)"""
+        """Извлекает данные из встроенных JSON в script тегах"""
         data = {}
         
-        # Ищем скрипт с аналитикой (содержит offerPhone, breadCrumbs, price)
         scripts = soup.find_all('script')
         
         for script in scripts:
@@ -278,28 +393,24 @@ class CianListingParser:
                         
                         page = json_data.get('page', {})
                         
-                        # Телефон из аналитики (резервный источник)
                         if 'offerPhone' in page:
                             if 'seller' not in data:
                                 data['seller'] = {}
                             if not data['seller'].get('phone'):
                                 data['seller']['phone'] = page['offerPhone']
                         
-                        # Тип продавца из аналитики
                         if 'offerAgentType' in page:
                             if 'seller' not in data:
                                 data['seller'] = {}
                             if not data['seller'].get('type'):
                                 data['seller']['type'] = self._map_seller_type(page['offerAgentType'])
                         
-                        # Имя продавца из аналитики
                         if 'offerAgentName' in page:
                             if 'seller' not in data:
                                 data['seller'] = {}
                             if not data['seller'].get('name'):
                                 data['seller']['name'] = page['offerAgentName']
                         
-                        # Хлебные крошки (адрес)
                         if 'breadCrumbs' in page:
                             breadcrumbs = page['breadCrumbs']
                             if breadcrumbs:
@@ -315,7 +426,6 @@ class CianListingParser:
                                         data['location'] = {}
                                     data['location']['address'] = ', '.join(specific_address)
                         
-                        # Цена из products
                         products = json_data.get('products', [])
                         if products and len(products) > 0:
                             product = products[0]
@@ -371,11 +481,10 @@ class CianListingParser:
         return data
     
     def _extract_from_html(self, soup: BeautifulSoup, html: str, url: str) -> Dict[str, Any]:
-        """Извлекает данные из HTML разметки (резервный метод)"""
+        """Извлекает данные из HTML разметки"""
         data = {}
         page_text = soup.get_text()
         
-        # Площадь
         if not data.get('total_area') or data.get('total_area') == 0:
             area_patterns = [
                 (r'Общая площадь.*?(\d+[.,]?\d*)\s*м²', 'total_area'),
@@ -398,13 +507,11 @@ class CianListingParser:
             if match:
                 data['kitchen_area'] = float(match.group(1).replace(',', '.'))
         
-        # Комнаты
         if not data.get('rooms') or data.get('rooms') == 0:
             rooms_match = re.search(r'(\d+)\s*комн', page_text, re.IGNORECASE)
             if rooms_match:
                 data['rooms'] = int(rooms_match.group(1))
         
-        # Этаж
         if not data.get('floor') or data.get('floor') == 0:
             floor_match = re.search(r'(\d+)\s*этаж.*?из\s*(\d+)', page_text, re.IGNORECASE)
             if floor_match:
@@ -415,62 +522,25 @@ class CianListingParser:
         if 'seller' not in data:
             data['seller'] = {}
         
-        # Ищем блок с информацией о продавце
-        # Вариант 1: Блок с классом AgentCard или OfferCardAgent
-        agent_card = soup.find('div', class_=re.compile(r'agent-card|AgentCard|offer-card-agent|BrokerCard', re.IGNORECASE)) or \
-                     soup.find('div', {'data-testid': re.compile(r'agent|seller|broker', re.IGNORECASE)})
-        
-        if agent_card:
-            # Имя продавца
-            if not data['seller'].get('name'):
-                name_elem = agent_card.find(['span', 'div', 'a'], class_=re.compile(r'name|agent-name', re.IGNORECASE))
-                if name_elem:
-                    data['seller']['name'] = name_elem.get_text(strip=True)
-            
-            # Тип продавца (Собственник, Агентство, Застройщик)
+        # Ищем блок с агентством
+        agency_elem = soup.find('a', href=re.compile(r'/company/\d+'))
+        if agency_elem:
+            if not data['seller'].get('company_name'):
+                data['seller']['company_name'] = agency_elem.get_text(strip=True)
             if not data['seller'].get('type'):
-                type_elem = agent_card.find(['span', 'div'], class_=re.compile(r'type|agent-type|seller-type', re.IGNORECASE))
-                if type_elem:
-                    seller_type_text = type_elem.get_text(strip=True).lower()
-                    data['seller']['type'] = self._map_seller_type_from_text(seller_type_text)
-                
-                # Альтернативный поиск типа по тексту
-                if not data['seller'].get('type'):
-                    agent_text = agent_card.get_text()
-                    if 'собственник' in agent_text.lower():
-                        data['seller']['type'] = 'owner'
-                    elif 'агентство' in agent_text.lower() or 'риелтор' in agent_text.lower():
-                        data['seller']['type'] = 'agency'
-                    elif 'застройщик' in agent_text.lower() or 'developer' in agent_text.lower():
-                        data['seller']['type'] = 'developer'
+                data['seller']['type'] = 'agency'
         
-        # Вариант 2: Прямой поиск элементов с информацией о продавце
-        if not data['seller'].get('name'):
-            name_elem = soup.find(['span', 'div'], class_=re.compile(r'agent.*name|seller.*name|agent-name|BrokerName', re.IGNORECASE))
-            if name_elem:
-                data['seller']['name'] = name_elem.get_text(strip=True)
+        # Ищем блок с риелтором
+        agent_elem = soup.find('a', href=re.compile(r'/agents/\d+'))
+        if agent_elem:
+            if not data['seller'].get('name'):
+                data['seller']['name'] = agent_elem.get_text(strip=True)
         
-        # Вариант 3: Поиск в JSON внутри HTML (data-* атрибуты)
+        # Поиск телефона в data-атрибутах
         if not data['seller'].get('phone'):
-            # Ищем телефон в data-атрибутах
-            phone_elem = soup.find(attrs={'data-phone': True})
-            if phone_elem:
-                data['seller']['phone'] = phone_elem['data-phone']
-            
-            # Или ищем телефон в скриптах через regex
-            if not data['seller'].get('phone'):
-                phone_match = re.search(r'"offerPhone"\s*:\s*"([^"]+)"', html)
-                if phone_match:
-                    data['seller']['phone'] = phone_match.group(1)
-        
-        # Вариант 4: Поиск в link rel="alternate" или других мета-тегах
-        if not data['seller'].get('name'):
-            # Ищем в специальных блоках
-            seller_info = soup.find('div', class_=re.compile(r'BrokerInfo|AgentInfo|SellerInfo', re.IGNORECASE))
-            if seller_info:
-                name_elem = seller_info.find(['span', 'div', 'a'])
-                if name_elem:
-                    data['seller']['name'] = name_elem.get_text(strip=True)
+            phone_match = re.search(r'"offerPhone"\s*:\s*"([^"]+)"', html)
+            if phone_match:
+                data['seller']['phone'] = phone_match.group(1)
         
         return data
     
@@ -487,7 +557,6 @@ class CianListingParser:
             'собственник': 'owner',
             'физическое лицо': 'owner',
             'individual': 'owner',
-            
             'agent': 'agency',
             'agency': 'agency',
             'realtor': 'agency',
@@ -495,26 +564,12 @@ class CianListingParser:
             'риелтор': 'agency',
             'агентство': 'agency',
             'агент': 'agency',
-            
             'developer': 'developer',
             'застройщик': 'developer',
             'builder': 'developer',
         }
         
         return mapping.get(seller_type_lower, 'unknown')
-    
-    def _map_seller_type_from_text(self, text: str) -> str:
-        """Определяет тип продавца по тексту"""
-        text_lower = text.lower()
-        
-        if 'собственник' in text_lower or 'owner' in text_lower:
-            return 'owner'
-        elif 'агентство' in text_lower or 'риелтор' in text_lower or 'агент' in text_lower:
-            return 'agency'
-        elif 'застройщик' in text_lower or 'developer' in text_lower:
-            return 'developer'
-        
-        return 'unknown'
     
     def _parse_price(self, price_str: str) -> int:
         """Парсит строку с ценой"""
@@ -524,27 +579,34 @@ class CianListingParser:
         digits = re.sub(r'[^\d]', '', str(price_str))
         return int(digits) if digits else 0
 
+"""
+Конец класса
+"""
 
 def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
-    """
-    Парсит отдельное объявление ЦИАН по URL.
-    """
+    """Парсит отдельное объявление ЦИАН по URL."""
     logger.info(f"Парсинг отдельного объявления ЦИАН: ID {obj_id}, URL: {url}")
     
     parser = CianListingParser()
     flat_data = parser.parse_listing(url)
+
+    # return flat_data
     
-    # Формируем информацию о продавце с дефолтными значениями
     seller_data = flat_data.get("seller", {})
     seller = {
         "name": seller_data.get("name", "Неизвестно"),
         "phone": seller_data.get("phone", ""),
-        "type": seller_data.get("type", "unknown"),  # owner, agency, developer, unknown
+        "type": seller_data.get("type", "unknown"),
         "company_name": seller_data.get("company_name", ""),
         "inn": None,
     }
     
-    # Преобразуем в наш внутренний формат
+    location = {
+        "lat": flat_data.get("coordinates", 0.0).get("lat", 0.0),
+        "lon": flat_data.get("coordinates", 0.0).get("lon", 0.0),
+        "address": flat_data.get("address", ""),
+    }
+    
     return {
         "id": obj_id,
         "platform": "ЦИАН",
@@ -558,26 +620,21 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
         "floor": flat_data.get("floor", 0),
         "total_floors": flat_data.get("total_floors", 0),
         "rooms": flat_data.get("rooms", 0),
-        "property_type": _map_property_type_from_url(url),
+        "property_type": _map_property_type_from_url(flat_data.get("title", "Недвижимость")),
         "deal_type": _map_deal_type_from_url(url),
         "seller": seller,
-        "location": flat_data.get("location", {
-            "lat": 0.0,
-            "lon": 0.0,
-            "address": flat_data.get("address", ""),
-        }),
+        "location": location,
         "description": flat_data.get("description", ""),
         "is_verified": False,
     }
 
 
-def _map_property_type_from_url(url: str) -> str:
-    """Определяет тип недвижимости из URL"""
-    url_lower = url.lower()
-    if '/flat/' in url_lower or '/kvartira/' in url_lower:
+def _map_property_type_from_url(title: str) -> str:
+    """Определяет тип недвижимости из Title"""
+    if re.search(r"\bквартир\w*", title, re.IGNORECASE):
         return "flat"
-    elif '/house/' in url_lower or '/dom/' in url_lower:
-        return "house"
+    elif re.search(r"\bапартамент\w*", title, re.IGNORECASE):
+        return "apartment"
     return "unknown"
 
 
@@ -589,14 +646,10 @@ def _map_deal_type_from_url(url: str) -> str:
     return "unknown"
 
 
-# Главная функция
 def parse_property_url(url: str) -> Optional[Dict[str, Any]]:
-    """
-    Парсит ссылку на недвижимость.
-    """
-    # 1. Валидация
+    """Парсит ссылку на недвижимость."""
     if not validate_url(url):
-        raise ValueError("Неподдерживаемая ссылка. Используйте ЦИАН, Авито, Домклик.")
+        raise ValueError("Неподдерживаемая ссылка. Используйте ЦИАН")
 
     platform = detect_platform(url)
     if not platform:
@@ -606,12 +659,10 @@ def parse_property_url(url: str) -> Optional[Dict[str, Any]]:
     if not obj_id:
         raise ValueError("Не удалось извлечь ID объекта из ссылки.")
 
-    # 2. Если включены моки — возвращаем заглушку
     if config.USE_MOCK_EXTERNAL_API:
         logger.warning("Используем МОК-данные для парсинга (USE_MOCK_EXTERNAL_API=True)")
         return _get_mock_property_data(platform, obj_id, url)
 
-    # 3. Реальный парсинг (только для ЦИАН)
     if platform == "cian":
         try:
             data = _parse_cian_single_listing(url, obj_id)
@@ -663,5 +714,9 @@ def _get_mock_property_data(platform: str, obj_id: str, url: str) -> Dict[str, A
     }
 
 
-with open('flat_data.json', 'a+', encoding='utf-8') as f:
-    json.dump(parse_property_url("https://shchyolkovo.cian.ru/sale/flat/325086411/?mlSearchSessionGuid=a185c846b5bc9bb86dde2df2d818d100&context=4.khUr_FZ3ryY.sZt_uHPTiu4-ECkxT62mkSmFbtrHgpJVv1IdvATdkWdNeMHxzarHoKxh1tthcPsigRuS5lbAz__HcTnTjK0GkGGgS1eYD8vcjMi7hpEjcc7dfTO5nYGs_gA"), f, ensure_ascii=False, indent=2)
+
+if __name__ == "__main__":
+    with open('flat_data.json', 'a+', encoding='utf-8') as f:
+        parser = CianListingParser()
+        # json.dump(_parse_cian_single_listing("https://www.cian.ru/sale/flat/327960213/?context=4.acmm5-RoIg8._W-2OYSz1vykZI0bwLc0-UgpxjdULRS3r7S5Ma_wAahLw3cS58yA2xM41Ahqi7HMyy3vLaN3UXuTmA&mlSearchSessionGuid=98a159afde7f6599110dfa7464114f97", 327960213), f, ensure_ascii=False, indent=2)
+        json.dump(parse_property_url("https://www.cian.ru/sale/flat/330914006/?context=4.xOlTRa3iZmI.x70bgZCY2bN4bWQQpZmZ5-yvFqEFKiyI8md9I1grVnC_b-XCUVgyroEv9E36yKzDgcIUPAs4V9Ob6w&mlSearchSessionGuid=0689ffcb1754c836865d0534785123c1"), f, ensure_ascii=False, indent=2)
