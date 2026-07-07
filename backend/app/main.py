@@ -8,7 +8,7 @@ from app.config import config
 from app.api import (
     deal,
     articles,
-    realtors,
+    # realtors,
     health,
 )
 from app.api.exceptions import BusinessError, business_error_handler, generic_exception_handler
@@ -40,7 +40,7 @@ app.add_middleware(
 # Подключаем роуты
 app.include_router(deal.router)
 app.include_router(articles.router)
-app.include_router(realtors.router)
+# app.include_router(realtors.router)
 app.include_router(health.router)
 
 # Регистрируем обработчики исключений

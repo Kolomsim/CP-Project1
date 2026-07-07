@@ -1,0 +1,53 @@
+.ratingBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 12px;
+	border-radius: var(--mantine-radius-xl);
+	font-size: var(--mantine-font-size-sm);
+	font-weight: 600;
+	width: fit-content;
+}
+
+.ratingDot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.ratingLow {
+	background: #ebfbee;
+	color: #2b8a3e;
+}
+
+.ratingLow .ratingDot {
+	background: #2b8a3e;
+}
+
+.ratingMedium {
+	background: #fff9db;
+	color: #e67700;
+}
+
+.ratingMedium .ratingDot {
+	background: #e67700;
+}
+
+.ratingHigh {
+	background: #fff5f5;
+	color: #c92a2a;
+}
+
+.ratingHigh .ratingDot {
+	background: #c92a2a;
+}
+
+.imagePlaceholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	width: 100%;
+	color: var(--mantine-color-gray-5);
+}

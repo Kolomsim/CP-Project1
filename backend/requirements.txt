@@ -13,3 +13,4 @@ httpx==0.27.0
 beautifulsoup4==4.12.3
 lxml==5.2.2
 tenacity==8.2.3
+cianparser==2.1.1

@@ -7,7 +7,7 @@ class BuyerInfoRequest(BaseModel):
     citizenship: Citizenship = Field(
         ..., 
         description="Гражданство покупателя",
-        example="Российская Федерация"
+        example="Россия"
     )
     marital_status: FamilyStatus = Field(
         ...,
