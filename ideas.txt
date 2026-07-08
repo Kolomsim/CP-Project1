@@ -1,0 +1,15 @@
+База данных для проекта: какая она должна быть?
+-- Для хранения данных пользовател  --
+id INT PRIMARY KEY 
+login VARCHAR(50) NOT NULL
+citizenship VARCHAR(50) NOT NULL
+marital_status: VARCHAR(50) NOT NULL
+purchase_method: VARCHAR(50) NOT NULL
+
+-- Для хранения избранных объектов --
+id INT PRIMARY KEY 
+user_id VARCHAR(50) FOREIGN KEY
+dom_id INT FOREIGN KEY
+
+--Для хранения информации по дому
+id 

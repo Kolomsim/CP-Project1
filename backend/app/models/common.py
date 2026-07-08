@@ -1,9 +1,8 @@
 from enum import Enum
 
 class PropertyType(str, Enum):
-    HOUSE = "дом"
-    FLAT_NEW = "новостройка"
-    FLAT_OLD = "вторичка"
+    flat = "квартира"
+    apartment = "апартаменты"
 
 class RiskLevel(str, Enum):
     HIGH = "высокий"

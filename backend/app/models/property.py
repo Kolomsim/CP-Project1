@@ -5,11 +5,11 @@ from app.models.common import PropertyType, DealType
 # Запрос = ссылка на объект недвижимости
 class PropertyInfoRequest(BaseModel):
     session_id: str = Field(..., description="ID сессии из шага 1")
-    url: HttpUrl = Field(..., description="Ссылка на объект недвижимости", example="https://cian.ru/sale/123456/")
+    url: str = Field(..., description="Ссылка на объект недвижимости", example="https://cian.ru/sale/123456/")
 
 
 class Seller(BaseModel):
-    name: str = Field(..., description="ФИО продавца")
+    name: str = Field(None, description="ФИО продавца")
     phone: Optional[str] = Field(None, description="Телефон продавца")
     inn: Optional[str] = Field(None, description="ИНН продавца (для проверки банкротства)")
 
@@ -23,7 +23,7 @@ class Location(BaseModel):
 
 class PropertyPreviewResponse(BaseModel):
     # Идентификаторы
-    id: str = Field(..., description="ID объекта на платформе")
+    id: Optional[str] = Field(None, description="ID объекта на платформе")
     platform: str = Field(..., description="Платформа (ЦИАН, Авито, Домклик)", example="ЦИАН")
     url: HttpUrl = Field(..., description="Ссылка на объект")
     
@@ -41,7 +41,7 @@ class PropertyPreviewResponse(BaseModel):
     rooms: int = Field(..., description="Количество комнат", example=1)
     
     property_type: PropertyType = Field(..., description="Тип недвижимости")
-    deal_type: Optional[DealType] = Field(None, description="Тип сделки")
+    # deal_type: Optional[DealType] = Field(None, description="Тип сделки")
     
     # Продавец
     seller: Seller = Field(..., description="Информация о продавце")

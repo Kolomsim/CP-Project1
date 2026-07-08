@@ -60,7 +60,7 @@ async def get_property_preview(request: PropertyInfoRequest):
     Парсит данные и возвращает предпросмотр для подтверждения.
     """
     try:
-        # Проверяем, что сессия существует
+        # Проверяем, что сессия существует, но пока не работает
         session_data = await get_session_data(request.session_id)
 
         # Парсим ссылку (асинхронно)

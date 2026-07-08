@@ -13,8 +13,8 @@ def validate_url(url: str) -> bool:
     Проверяет, что ссылка ведёт на поддерживаемый сайт.
     """
     if not url or not isinstance(url, str):
+        
         return False
-    
     try:
         parsed = urlparse(url)
     except Exception:

@@ -49,3 +49,7 @@ coverage.xml
 .ruff_cache/
 .gigacode/plans
 .gigacode
+
+page_debug.html
+test_parser.py
+flat_data.json

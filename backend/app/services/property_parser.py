@@ -632,9 +632,9 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
 def _map_property_type_from_url(title: str) -> str:
     """Определяет тип недвижимости из Title"""
     if re.search(r"\bквартир\w*", title, re.IGNORECASE):
-        return "flat"
+        return "квартира"
     elif re.search(r"\bапартамент\w*", title, re.IGNORECASE):
-        return "apartment"
+        return "апартаменты"
     return "unknown"
 
 
@@ -646,7 +646,7 @@ def _map_deal_type_from_url(url: str) -> str:
     return "unknown"
 
 
-def parse_property_url(url: str) -> Optional[Dict[str, Any]]:
+async def parse_property_url(url: str) -> Optional[Dict[str, Any]]:
     """Парсит ссылку на недвижимость."""
     if not validate_url(url):
         raise ValueError("Неподдерживаемая ссылка. Используйте ЦИАН")
