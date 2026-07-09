@@ -2,6 +2,7 @@ import re
 import json
 import logging
 from curl_cffi import requests
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_message
 
 from typing import Optional, Dict, Any
 from bs4 import BeautifulSoup
@@ -38,24 +39,25 @@ class CianListingParser:
     def parse_listing(self, url: str) -> Dict[str, Any]:
         """Парсит объявление с использованием requests"""
         try:
-            # Загружаем страницу
-            response = self.session.get(url, timeout=30)
-            response.raise_for_status()
-            
-            html = response.text
+            html = self._fetch_page(url)
             soup = BeautifulSoup(html, 'html.parser')
-            
-            # Извлекаем данные
-            data = self._extract_data(soup, html, url)
-            
-            return data
-            
-        except requests.RequestException as e:
-            logger.error(f"Ошибка HTTP запроса: {e}")
-            raise Exception(f"Не удалось загрузить страницу: {str(e)}")
+            return self._extract_data(soup, html, url)
         except Exception as e:
-            logger.error(f"Ошибка парсинга ЦИАН: {e}")
-            raise Exception(f"Не удалось спарсить объявление: {str(e)}")
+            logger.error(f"Ошибка HTTP запроса или парсинга: {e}")
+            raise Exception(f"Не удалось загрузить или разобрать страницу: {str(e)}")
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=8),
+        retry=retry_if_exception_message(match=".*(timed out|Timeout|Connection).*"),
+        reraise=True,
+    )
+    def _fetch_page(self, url: str) -> str:
+        session = requests.Session(impersonate="chrome120")
+        session.headers.update(self.headers)
+        response = session.get(url, timeout=45)
+        response.raise_for_status()
+        return response.text
     
     def _extract_data(self, soup: BeautifulSoup, html: str, url: str) -> Dict[str, Any]:
         """Извлекает данные из HTML"""
@@ -545,6 +547,13 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
     }
     
     # Преобразуем в наш внутренний формат
+    location = flat_data.get("location") or {}
+    normalized_location = {
+        "lat": float(location.get("lat") or 0.0),
+        "lon": float(location.get("lon") or 0.0),
+        "address": location.get("address") or flat_data.get("address", ""),
+    }
+
     return {
         "id": obj_id,
         "platform": "ЦИАН",
@@ -561,11 +570,7 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
         "property_type": _map_property_type_from_url(url),
         "deal_type": _map_deal_type_from_url(url),
         "seller": seller,
-        "location": flat_data.get("location", {
-            "lat": 0.0,
-            "lon": 0.0,
-            "address": flat_data.get("address", ""),
-        }),
+        "location": normalized_location,
         "description": flat_data.get("description", ""),
         "is_verified": False,
     }
@@ -619,9 +624,6 @@ def parse_property_url(url: str) -> Optional[Dict[str, Any]]:
             return data
         except Exception as e:
             logger.error(f"Ошибка парсинга ЦИАН: {e}")
-            if config.DEBUG:
-                logger.warning("Падаем в мок-данные (режим DEBUG)")
-                return _get_mock_property_data(platform, obj_id, url)
             raise ParserError(f"Не удалось спарсить объект: {str(e)}")
     else:
         logger.warning(f"Платформа {platform} не поддерживается для реального парсинга, используем мок")

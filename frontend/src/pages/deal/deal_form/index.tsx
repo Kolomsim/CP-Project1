@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
-import { Button, Container, Paper, Select, Stack, Title } from '@mantine/core'
+import { useNavigate } from 'react-router'
+import { Alert, Button, Container, Paper, Select, Stack, Title } from '@mantine/core'
+import { IconAlertCircle } from '@tabler/icons-react'
+import { saveBuyerInfo } from '../../../api/deal'
 import { AppLayout } from '../../../components/AppLayout'
+import { clearDealSession, setDealSessionId } from '../../../lib/dealSession'
 
 const citizenshipData = [
   { value: 'russian', label: 'Российская Федерация' },
   { value: 'foreign', label: 'Иностранное гражданство' },
-  { value: 'none', label: 'Не имеет гражданства' },
 ]
 
 const maritalStatusData = [
@@ -45,12 +47,35 @@ const containedInputStyles = {
 }
 
 export default function DealFormPage() {
+  const navigate = useNavigate()
   const [citizenship, setCitizenship] = useState<string | null>(null)
   const [maritalStatus, setMaritalStatus] = useState<string | null>(null)
   const [purchaseMethod, setPurchaseMethod] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = () => {
-    console.log('Данные формы:', { citizenship, maritalStatus, purchaseMethod })
+  const handleSubmit = async () => {
+    if (!citizenship || !maritalStatus || !purchaseMethod) {
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      clearDealSession()
+      const sessionId = await saveBuyerInfo({
+        citizenship,
+        maritalStatus,
+        purchaseMethod,
+      })
+      setDealSessionId(sessionId)
+      navigate('/deal/deal_object')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить данные.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -89,13 +114,18 @@ export default function DealFormPage() {
               styles={containedInputStyles}
             />
 
+            {error && (
+              <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light" title="Ошибка">
+                {error}
+              </Alert>
+            )}
+
             <Button
               fullWidth
               size="md"
               mt="xl"
-              component={Link}
-              to="/deal/deal_object"
-              onClick={handleSubmit}
+              onClick={() => void handleSubmit()}
+              loading={loading}
               disabled={!citizenship || !maritalStatus || !purchaseMethod}
             >
               Продолжить

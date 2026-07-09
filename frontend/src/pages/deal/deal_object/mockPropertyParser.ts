@@ -47,26 +47,3 @@ export function getPlatformName(url: string): string | null {
   const match = SUPPORTED_PLATFORMS.find(({ pattern }) => pattern.test(url))
   return match?.name ?? null
 }
-
-function extractId(url: string): string {
-  const match = url.match(/(\d{5,})/)
-  return match?.[1] ?? `${Date.now()}`
-}
-
-export async function fetchPropertyPreview(url: string): Promise<PropertyPreview> {
-  if (!isSupportedPropertyUrl(url)) {
-    throw new Error('Ссылка не поддерживается. Укажите URL с ЦИАН, Авито, Домклик или SmartCheck.')
-  }
-
-  await new Promise((resolve) => setTimeout(resolve, 900))
-
-  const platform = getPlatformName(url) ?? 'Неизвестно'
-  const id = extractId(url)
-
-  return {
-    ...DEMO_PROPERTY,
-    id,
-    platform,
-    url: url.trim(),
-  }
-}

@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, List
-from app.models.common import PropertyType, DealType
+from typing import Optional
 
 # Запрос = ссылка на объект недвижимости
 class PropertyInfoRequest(BaseModel):
@@ -40,8 +39,8 @@ class PropertyPreviewResponse(BaseModel):
     total_floors: int = Field(..., description="Всего этажей в доме", example=10)
     rooms: int = Field(..., description="Количество комнат", example=1)
     
-    property_type: PropertyType = Field(..., description="Тип недвижимости")
-    deal_type: Optional[DealType] = Field(None, description="Тип сделки")
+    property_type: str = Field(..., description="Тип недвижимости")
+    deal_type: Optional[str] = Field(None, description="Тип сделки")
     
     # Продавец
     seller: Seller = Field(..., description="Информация о продавце")

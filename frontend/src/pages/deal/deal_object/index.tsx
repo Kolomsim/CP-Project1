@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import {
   Alert,
@@ -13,8 +13,15 @@ import {
 import { useDebouncedValue } from '@mantine/hooks'
 import { IconAlertCircle, IconLink } from '@tabler/icons-react'
 import { AppLayout } from '../../../components/AppLayout'
+import { fetchPropertyPreview } from '../../../api/deal'
+import {
+  getDealPropertyPreview,
+  getDealPropertyUrl,
+  getDealSessionId,
+  saveDealPropertyPreview,
+} from '../../../lib/dealSession'
 import { PropertyPreviewCard } from './PropertyPreviewCard'
-import { fetchPropertyPreview, isSupportedPropertyUrl } from './mockPropertyParser'
+import { isSupportedPropertyUrl } from './mockPropertyParser'
 import type { PropertyPreview } from './types'
 import classes from './DealObject.module.css'
 
@@ -36,19 +43,40 @@ const containedInputStyles = {
   },
 }
 
+function normalizeUrl(url: string): string {
+  const trimmed = url.trim()
+  return trimmed.match(/^https?:\/\//i) ? trimmed : `https://${trimmed}`
+}
+
 export default function DealObjectPage() {
-  const [url, setUrl] = useState('')
+  const savedUrl = getDealPropertyUrl() ?? ''
+  const savedProperty = getDealPropertyPreview<PropertyPreview>()
+  const [url, setUrl] = useState(savedUrl)
   const [debouncedUrl] = useDebouncedValue(url, 600)
-  const [property, setProperty] = useState<PropertyPreview | null>(null)
+  const [property, setProperty] = useState<PropertyPreview | null>(savedProperty)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const lastFetchedUrlRef = useRef(savedUrl ? normalizeUrl(savedUrl) : '')
 
-  const loadPreview = async (value: string) => {
+  const loadPreview = async (value: string, force = false) => {
     const trimmed = value.trim()
 
     if (!trimmed) {
       setProperty(null)
       setError(null)
+      lastFetchedUrlRef.current = ''
+      return
+    }
+
+    const normalizedUrl = normalizeUrl(trimmed)
+
+    if (!force && normalizedUrl === lastFetchedUrlRef.current && property) {
+      return
+    }
+
+    if (!getDealSessionId()) {
+      setProperty(null)
+      setError('Сначала заполните анкету покупателя на предыдущем шаге.')
       return
     }
 
@@ -63,6 +91,8 @@ export default function DealObjectPage() {
 
     try {
       const preview = await fetchPropertyPreview(trimmed)
+      saveDealPropertyPreview(preview, normalizedUrl)
+      lastFetchedUrlRef.current = normalizedUrl
       setProperty(preview)
     } catch (err) {
       setProperty(null)
@@ -77,17 +107,12 @@ export default function DealObjectPage() {
     if (!value.trim()) {
       setProperty(null)
       setError(null)
+      lastFetchedUrlRef.current = ''
     }
-  }
-
-  const handleUrlBlur = () => {
-    void loadPreview(url)
   }
 
   useEffect(() => {
     if (!debouncedUrl.trim()) {
-      setProperty(null)
-      setError(null)
       return
     }
 
@@ -113,7 +138,6 @@ export default function DealObjectPage() {
             placeholder="https://www.cian.ru/sale/flat/123456789/"
             value={url}
             onChange={(event) => handleUrlChange(event.currentTarget.value)}
-            onBlur={handleUrlBlur}
             leftSection={<IconLink size={16} stroke={1.5} />}
             styles={containedInputStyles}
           />
@@ -124,7 +148,7 @@ export default function DealObjectPage() {
             <Stack align="center" gap="sm">
               <Loader color="violet" size="md" />
               <Text size="sm" c="dimmed">
-                Загружаем данные объекта...
+                Загружаем данные объекта с ЦИАН... Это может занять до минуты.
               </Text>
             </Stack>
           </Paper>
