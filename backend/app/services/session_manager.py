@@ -47,7 +47,7 @@ def update_session(session_id: str, data: Dict[str, Any]) -> bool:
     return True
 
 def delete_session(session_id: str) -> bool:
-    if session_id not in _sessions:
+    if session_id in _sessions:
         del _sessions[session_id]
         return True
     return False

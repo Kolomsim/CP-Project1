@@ -1,6 +1,5 @@
 import {
 	Anchor,
-	Checkbox,
 	Button,
 	Group,
 	Paper,
@@ -9,16 +8,22 @@ import {
 	Stack,
 	Text,
 	TextInput,
-	UnstyledButton,
+	Alert,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { upperFirst, useToggle } from '@mantine/hooks'
+import { useNavigate } from 'react-router'
+import { IconInfoCircle } from '@tabler/icons-react'
 import { useState } from 'react'
-import { AppLayout } from '../../components/AppLayout'
-import classes from './CheckboxCard.module.css'
+import { useAuth } from '../../context/AuthContext'
 
 export function AuthPage(props: PaperProps) {
 	const [type, toggle] = useToggle(['login', 'register'])
+	const [error, setError] = useState<string | null>(null)
+	const [loading, setLoading] = useState(false)
+	const navigate = useNavigate()
+	const { login, register, isAuthenticated } = useAuth()
+
 	const form = useForm({
 		initialValues: {
 			email: '',
@@ -28,119 +33,107 @@ export function AuthPage(props: PaperProps) {
 		},
 
 		validate: {
-			email: val => (/^\S+@\S+$/.test(val) ? null : 'Invalid email'),
-			password: val =>
-				val.length <= 6
-					? 'Password should include at least 6 characters'
-					: null,
+			email: val => (/^\S+@\S+$/.test(val) ? null : 'Неверный формат email'),
+			password: val => (val.length < 6 ? 'Пароль должен содержать не менее 6 символов' : null),
+			name: (val, _values, path) => {
+				if (path === 'register' && !val.trim()) {
+					return 'Имя обязательно'
+				}
+				return null
+			},
 		},
 	})
 
-	const [value, onChange] = useState(false)
+	// Если уже авторизован — перенаправляем на главную
+	if (isAuthenticated) {
+		navigate('/')
+		return null
+	}
+
+	const handleSubmit = async (values: typeof form.values) => {
+		setError(null)
+		setLoading(true)
+
+		try {
+			if (type === 'register') {
+				await register(values.email, values.password, values.name)
+			} else {
+				await login(values.email, values.password)
+			}
+			navigate('/')
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Произошла ошибка')
+		} finally {
+			setLoading(false)
+		}
+	}
 
 	return (
-		<AppLayout>
-			<Paper radius='md' p='lg' withBorder {...props}>
-				<Text size='lg' fw={500} c='bright'>
-					{type === 'register' ? 'Регистрация' : 'Вход в аккаунт'}
-				</Text>
+		<Paper radius='md' p='lg' withBorder maw={480} mx='auto' {...props}>
+			<Text size='lg' fw={500} c='bright' mb='md'>
+				{type === 'register' ? 'Регистрация' : 'Вход в аккаунт'}
+			</Text>
 
-				<form onSubmit={form.onSubmit(() => {})}>
-					<Stack>
-						{type === 'register' && (
-							<TextInput
-								label='Name'
-								placeholder='Your name'
-								value={form.values.name}
-								onChange={event =>
-									form.setFieldValue('name', event.currentTarget.value)
-								}
-								radius='md'
-							/>
-						)}
+			{error && (
+				<Alert icon={<IconInfoCircle size={16} />} color='red' variant='light' mb='md'>
+					{error}
+				</Alert>
+			)}
 
+			<form onSubmit={form.onSubmit(handleSubmit)}>
+				<Stack>
+					{type === 'register' && (
 						<TextInput
-							required
-							label='Email'
-							placeholder='email@example.com'
-							value={form.values.email}
-							onChange={event =>
-								form.setFieldValue('email', event.currentTarget.value)
-							}
-							error={form.errors.email && 'Неверный формат email'}
+							label='Имя'
+							placeholder='Ваше имя'
+							value={form.values.name}
+							onChange={event => form.setFieldValue('name', event.currentTarget.value)}
+							error={form.errors.name && 'Имя обязательно'}
 							radius='md'
-						/>
-
-						<PasswordInput
 							required
-							label='Password'
-							placeholder='Пароль'
-							value={form.values.password}
-							onChange={event =>
-								form.setFieldValue('password', event.currentTarget.value)
-							}
-							error={
-								form.errors.password &&
-								'Пароль должен содержать не менее 6 символов'
-							}
-							radius='md'
 						/>
+					)}
 
-						{type === 'register' && (
-							<Checkbox
-								label='Я согласен с условиями использования'
-								checked={form.values.terms}
-								onChange={event =>
-									form.setFieldValue('terms', event.currentTarget.checked)
-								}
-							/>
-						)}
-					</Stack>
+					<TextInput
+						required
+						label='Email'
+						placeholder='email@example.com'
+						value={form.values.email}
+						onChange={event => form.setFieldValue('email', event.currentTarget.value)}
+						error={form.errors.email && 'Неверный формат email'}
+						radius='md'
+					/>
 
-					<Group justify='space-between' mt='xl'>
-						<Anchor
-							component='button'
-							type='button'
-							c='bright'
-							opacity={0.85}
-							onClick={() => toggle()}
-							size='xs'
-						>
-							{type === 'register'
-								? 'Already have an account? Login'
-								: "Don't have an account? Register"}
-						</Anchor>
-						{
-							<Button type='submit' radius='xl'>
-								{upperFirst(type)}
-							</Button>
-						}
-						<UnstyledButton component='label' className={classes.button}>
-							<Checkbox
-								checked={value}
-								onChange={event => onChange(event.currentTarget.checked)}
-								size='md'
-								mr='xl'
-								styles={{ input: { cursor: 'pointer' } }}
-							/>
+					<PasswordInput
+						required
+						label='Пароль'
+						placeholder='Пароль'
+						value={form.values.password}
+						onChange={event => form.setFieldValue('password', event.currentTarget.value)}
+						error={form.errors.password && 'Пароль должен содержать не менее 6 символов'}
+						radius='md'
+					/>
+				</Stack>
 
-							<div>
-								<Text size='xs' c='dimmed' ta='center'>
-									Нажимая на кнопку, вы даете согласие на обработку ваших{' '}
-									<Anchor
-										href='/privacy'
-										target='_blank'
-										inherit
-										underline='always'
-									>
-										персональных данных
-									</Anchor>
-								</Text>
-							</div>
-						</UnstyledButton>
-					</Group>
-				</form>
-			</Paper>
-		</AppLayout>
+				<Group justify='space-between' mt='xl'>
+					<Anchor
+						component='button'
+						type='button'
+						c='bright'
+						opacity={0.85}
+						onClick={() => {
+							toggle()
+							setError(null)
+						}}
+						size='xs'
+					>
+						{type === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+					</Anchor>
+					<Button type='submit' radius='xl' loading={loading}>
+						{upperFirst(type === 'register' ? 'Регистрация' : 'Войти')}
+					</Button>
+				</Group>
+			</form>
+		</Paper>
 	)
 }

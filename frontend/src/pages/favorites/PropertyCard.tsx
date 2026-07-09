@@ -8,6 +8,7 @@ import {
 	IconPhoto,
 } from '@tabler/icons-react'
 import type { PropertyPreview, DealRating } from '../../types/property'
+import { formatPrice, getRatingClassName } from '../../utils/format'
 import classes from './PropertyCard.module.css'
 
 export interface PropertyCardProps {
@@ -20,21 +21,10 @@ export interface PropertyCardProps {
 	onShowMap?: (property: PropertyPreview) => void
 }
 
-function formatPrice(price: number): string {
-	return new Intl.NumberFormat('ru-RU').format(price)
-}
-
-function getRatingClassName(level: string): string {
-	switch (level) {
-		case 'low':
-			return classes.ratingLow
-		case 'medium':
-			return classes.ratingMedium
-		case 'high':
-			return classes.ratingHigh
-		default:
-			return ''
-	}
+const ratingClassMap: Record<string, string> = {
+	ratingGreen: classes.ratingLow,
+	ratingYellow: classes.ratingMedium,
+	ratingRed: classes.ratingHigh,
 }
 
 export function PropertyCard({
@@ -93,7 +83,7 @@ export function PropertyCard({
 				</Group>
 
 				{/* Рейтинг */}
-				<div className={`${classes.ratingBadge} ${getRatingClassName(rating.level)}`}>
+				<div className={`${classes.ratingBadge} ${getRatingClassName(rating.level, ratingClassMap)}`}>
 					<span className={classes.ratingDot} />
 					{rating.label}
 				</div>

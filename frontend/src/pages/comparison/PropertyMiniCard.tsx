@@ -1,15 +1,12 @@
 import { Box, Card, Group, Stack, Text, Badge, Checkbox, Image } from '@mantine/core'
 import { IconPhoto } from '@tabler/icons-react'
 import type { PropertyPreview } from '../../types/property'
+import { formatPrice } from '../../utils/format'
 
 export interface PropertyMiniCardProps {
 	property: PropertyPreview
 	selected: boolean
 	onToggle: (id: string) => void
-}
-
-function formatPrice(price: number): string {
-	return new Intl.NumberFormat('ru-RU').format(price)
 }
 
 export function PropertyMiniCard({ property, selected, onToggle }: PropertyMiniCardProps) {

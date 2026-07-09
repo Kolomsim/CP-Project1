@@ -112,11 +112,10 @@ async def check_all_risks(
     #     })
 
     # Формируем итоговый рейтинг
-    critical = [r for r in risks if r.get("severity") == RiskLevel.HIGH]
-    high = [r for r in risks if r.get("severity") == RiskLevel.HIGH]
+    high_risks = [r for r in risks if r.get("severity") == RiskLevel.HIGH]
     medium = [r for r in risks if r.get("severity") == RiskLevel.MEDIUM]
 
-    if critical or high:
+    if high_risks:
         overall_rating = "Не рекомендуется"
     elif medium:
         overall_rating = "Требуется проверка"
@@ -131,7 +130,7 @@ async def check_all_risks(
         "overall_rating": overall_rating,
         "required_documents": required_documents,
         "risk_count": len(risks),
-        "critical_count": len(critical) + len(high),
+        "critical_count": len(high_risks),
         "check_date": datetime.datetime.now().isoformat()
     }
 

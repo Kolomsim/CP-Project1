@@ -1,11 +1,7 @@
-import { Box, Card, Group, Stack, Text, Badge, Image } from '@mantine/core'
-import {
-	IconPhoto,
-	IconArrowUp,
-	IconArrowDown,
-	IconMinus,
-} from '@tabler/icons-react'
+import { Card, Group, Stack, Text, Image } from '@mantine/core'
+import { IconPhoto, IconArrowUp, IconArrowDown, IconMinus } from '@tabler/icons-react'
 import type { PropertyPreview, DealRating } from '../../types/property'
+import { formatPrice, getRatingClassName } from '../../utils/format'
 import classes from './ComparisonCard.module.css'
 
 export interface ComparisonCardProps {
@@ -22,60 +18,35 @@ export interface ComparisonResult {
 	winner: 'left' | 'right' | 'tie'
 }
 
-function formatPrice(price: number): string {
-	return new Intl.NumberFormat('ru-RU').format(price)
-}
-
-function getRatingClassName(level: string): string {
-	switch (level) {
-		case 'low':
-			return classes.ratingLow
-		case 'medium':
-			return classes.ratingMedium
-		case 'high':
-			return classes.ratingHigh
-		default:
-			return ''
-	}
+const ratingClassMap: Record<string, string> = {
+	ratingGreen: classes.ratingLow,
+	ratingYellow: classes.ratingMedium,
+	ratingRed: classes.ratingHigh,
 }
 
 function getArrowIcon(comparison: ComparisonResult, side: 'left' | 'right') {
 	if (comparison.winner === 'tie') {
 		return <IconMinus size={16} className={classes.neutral} />
 	}
-	if (
-		(side === 'left' && comparison.winner === 'left') ||
-		(side === 'right' && comparison.winner === 'right')
-	) {
+	if ((side === 'left' && comparison.winner === 'left') || (side === 'right' && comparison.winner === 'right')) {
 		return <IconArrowUp size={16} className={classes.arrowUp} />
 	}
 	return <IconArrowDown size={16} className={classes.arrowDown} />
 }
 
-function getValueClass(
-	comparison: ComparisonResult,
-	side: 'left' | 'right',
-): string {
+function getValueClass(comparison: ComparisonResult, side: 'left' | 'right'): string {
 	if (comparison.winner === 'tie') return classes.comparisonValue
-	if (
-		(side === 'left' && comparison.winner === 'left') ||
-		(side === 'right' && comparison.winner === 'right')
-	) {
+	if ((side === 'left' && comparison.winner === 'left') || (side === 'right' && comparison.winner === 'right')) {
 		return classes.comparisonWinner
 	}
 	return classes.comparisonLoser
 }
 
-export function ComparisonCard({
-	property,
-	rating,
-	side,
-	comparisons,
-}: ComparisonCardProps) {
+export function ComparisonCard({ property, rating, side, comparisons }: ComparisonCardProps) {
 	const imageUrl = property.images?.[0]
 
 	return (
-		<Card withBorder className={classes.card} padding='md'>
+		<Card withBorder className={classes.card} padding='md' style={{ height: '100%' }}>
 			{/* Image */}
 			<div className={classes.imageSection}>
 				{imageUrl ? (
@@ -87,7 +58,7 @@ export function ComparisonCard({
 				)}
 			</div>
 
-			<Stack gap='xs' mt='md'>
+			<Stack gap='xs' mt='md' style={{ flex: 1 }}>
 				{/* Title & Price */}
 				<Text fw={700} size='lg'>
 					{property.title}
@@ -99,22 +70,31 @@ export function ComparisonCard({
 					{formatPrice(Math.round(property.price / property.total_area))} ₽/м²
 				</Text>
 
-				{/* Address */}
-				<Text size='sm' c='dimmed'>
+				{/* Address — фиксированная высота 2 строки */}
+				<Text
+					size='sm'
+					c='dimmed'
+					style={{
+						minHeight: '2.5em',
+						display: '-webkit-box',
+						WebkitLineClamp: 2,
+						WebkitBoxOrient: 'vertical',
+						overflow: 'hidden',
+						lineHeight: 1.25,
+					}}
+				>
 					{property.address}
 				</Text>
 
 				{/* Rating */}
-				<div
-					className={`${classes.ratingBadge} ${getRatingClassName(rating.level)}`}
-				>
+				<div className={`${classes.ratingBadge} ${getRatingClassName(rating.level, ratingClassMap)}`}>
 					<span className={classes.ratingDot} />
 					{rating.label}
 				</div>
 
-				{/* Description */}
+				{/* Description — растягивается под самый длинный */}
 				{property.description && (
-					<Text size='sm' c='dimmed'>
+					<Text size='sm' c='dimmed' style={{ flex: 1, lineHeight: 1.5 }}>
 						{property.description}
 					</Text>
 				)}
@@ -125,9 +105,7 @@ export function ComparisonCard({
 						<div key={comp.label} className={classes.comparisonRow}>
 							<Text className={classes.comparisonLabel}>{comp.label}</Text>
 							<Group gap={4} justify='center' style={{ flex: 1 }}>
-								<Text className={getValueClass(comp, side)}>
-									{side === 'left' ? comp.leftValue : comp.rightValue}
-								</Text>
+								<Text className={getValueClass(comp, side)}>{side === 'left' ? comp.leftValue : comp.rightValue}</Text>
 								{getArrowIcon(comp, side)}
 							</Group>
 						</div>

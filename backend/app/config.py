@@ -14,6 +14,18 @@ class Config:
     PORT: int = int(os.getenv("PORT", 8000))
     RELOAD: bool = os.getenv("RELOAD", "True").lower() == "true"
 
+    # Database
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://smartcheck:smartcheck_secret@localhost:5432/smartcheck",
+    )
+
+    # JWT Auth
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "smartcheck-jwt-secret-key-change-in-production-2026")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 60))
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7))
+
     # Федресурс (банкротство)
     FEDRESURS_API_URL: str = os.getenv("FEDRESURS_API_URL", "https://fedresurs.ru/api/v1")
     FEDRESURS_API_KEY: Optional[str] = os.getenv("FEDRESURS_API_KEY", None)

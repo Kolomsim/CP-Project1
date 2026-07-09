@@ -49,8 +49,7 @@ export const mockProperties: PropertyWithRating[] = [
 			lon: 37.6273,
 			address: 'г. Москва, ул. Ленина, д. 5',
 		},
-		description:
-			'Уютная квартира-студия после косметического ремонта. Хороший вариант для инвестиций.',
+		description: 'Уютная квартира-студия после косметического ремонта. Хороший вариант для инвестиций.',
 		is_verified: false,
 		rating: { score: 55, level: 'medium', label: 'Средний риск' },
 	},
@@ -75,8 +74,7 @@ export const mockProperties: PropertyWithRating[] = [
 			lon: 37.6073,
 			address: 'г. Москва, ул. Арбат, д. 22',
 		},
-		description:
-			'Большая квартира в историческом центре. Требуется капитальный ремонт.',
+		description: 'Большая квартира в историческом центре. Требуется капитальный ремонт.',
 		is_verified: true,
 		rating: { score: 30, level: 'high', label: 'Высокий риск' },
 	},

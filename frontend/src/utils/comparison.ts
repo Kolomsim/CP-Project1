@@ -1,14 +1,8 @@
 import type { ComparisonResult } from '../pages/comparison/ComparisonCard'
 import type { PropertyWithRating } from '../mock/properties'
+import { formatPrice } from './format'
 
-export function formatPrice(price: number): string {
-	return new Intl.NumberFormat('ru-RU').format(price)
-}
-
-export function buildComparisons(
-	a: PropertyWithRating,
-	b: PropertyWithRating,
-): ComparisonResult[] {
+export function buildComparisons(a: PropertyWithRating, b: PropertyWithRating): ComparisonResult[] {
 	return [
 		{
 			label: 'Цена',
@@ -31,12 +25,7 @@ export function buildComparisons(
 			label: 'Общая площадь',
 			leftValue: `${a.total_area} м²`,
 			rightValue: `${b.total_area} м²`,
-			winner:
-				a.total_area > b.total_area
-					? 'left'
-					: a.total_area < b.total_area
-						? 'right'
-						: 'tie',
+			winner: a.total_area > b.total_area ? 'left' : a.total_area < b.total_area ? 'right' : 'tie',
 		},
 		{
 			label: 'Жилая площадь',
