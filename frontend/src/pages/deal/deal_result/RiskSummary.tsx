@@ -8,7 +8,7 @@ type RiskSummaryProps = {
 }
 
 function getRatingColor(rating: string) {
-  if (rating === 'Обратите внимание') {
+  if (rating === 'Не рекомендуется' || rating === 'Обратите внимание') {
     return 'red'
   }
 
@@ -79,14 +79,20 @@ export function RiskSummary({ result }: RiskSummaryProps) {
           </Badge>
         </Group>
 
+        {result.problems.length > 0 && (
+          <Text size="sm" c="dimmed">
+            Найдено рисков: {result.problems.length}
+          </Text>
+        )}
+
         {result.problems.length > 0 ? (
           <Stack gap="sm">
             <Text size="sm" fw={500}>
               В результате проверки выявлены следующие проблемы:
             </Text>
 
-            {result.problems.map((risk) => (
-              <RiskItem key={`${risk.type}-${risk.title}`} risk={risk} />
+            {result.problems.map((risk, index) => (
+              <RiskItem key={`${risk.type}-${index}`} risk={risk} />
             ))}
           </Stack>
         ) : (

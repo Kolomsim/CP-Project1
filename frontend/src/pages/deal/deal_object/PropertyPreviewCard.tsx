@@ -59,17 +59,17 @@ export function PropertyPreviewCard({ property }: PropertyPreviewCardProps) {
 
         <Tabs defaultValue="about" variant="outline" radius="md">
           <Tabs.List>
-            <Tabs.Tab value="seller">Продавец</Tabs.Tab>
+            {/* <Tabs.Tab value="seller">Продавец</Tabs.Tab> */}
             <Tabs.Tab value="about">О квартире</Tabs.Tab>
           </Tabs.List>
 
-          <Tabs.Panel value="seller" pt="md">
+          {/* <Tabs.Panel value="seller" pt="md">
             <Stack gap="xs">
               <DetailItem label="ФИО" value={property.seller.name} />
               {property.seller.phone && <DetailItem label="Телефон" value={property.seller.phone} />}
               <DetailItem label="Платформа" value={property.platform} />
             </Stack>
-          </Tabs.Panel>
+          </Tabs.Panel> */}
 
           <Tabs.Panel value="about" pt="md">
             <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md">

@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Alert, Loader, Paper, Stack, Text, Title } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { AppLayout } from '../../../components/AppLayout'
+import { fetchDealCheckResult } from '../../../api/deal'
+import { getDealPropertyPreview } from '../../../lib/dealSession'
 import { PropertyPreviewCard } from '../deal_object/PropertyPreviewCard'
+import type { PropertyPreview } from '../deal_object/types'
 import { RiskSummary } from './RiskSummary'
-import { fetchDealCheckResult } from './mockDealResult'
 import type { DealCheckResult } from './types'
 import classes from './DealResult.module.css'
 
@@ -19,7 +21,8 @@ export default function DealResultPage() {
       setError(null)
 
       try {
-        const data = await fetchDealCheckResult()
+        const property = getDealPropertyPreview<PropertyPreview>()
+        const data = await fetchDealCheckResult(undefined, property)
         setResult(data)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Не удалось загрузить результат проверки.')

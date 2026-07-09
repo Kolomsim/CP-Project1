@@ -33,6 +33,7 @@ class CheckRisksResponse(BaseModel):
     """
     # Список проблем
     problems: List[Risk] = Field(default_factory=list, description="Найденные риски")
+    overall_rating: str = Field(..., description="Итоговый рейтинг сделки")
     
     # Документы, которые нужны пользователю
     required_documents: List[RequiredDocument] = Field(
