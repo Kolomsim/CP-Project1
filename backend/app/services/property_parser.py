@@ -82,6 +82,10 @@ class CianListingParser:
         # 5. Извлекаем из HTML разметки (дополнительные данные)
         html_data = self._extract_from_html(soup, html, url)
         data.update(html_data)
+
+        # 6. Fallback: новый формат страниц ЦИАН (window._cianConfig)
+        cian_config_data = self._extract_from_cian_config(html)
+        self._merge_cian_config_data(data, cian_config_data)
         
         return data
     
@@ -222,6 +226,59 @@ class CianListingParser:
             logger.debug(f"Ошибка при разборе __NEXT_DATA__: {e}")
         
         return data
+
+    def _extract_from_cian_config(self, html: str) -> Dict[str, Any]:
+        """Извлекает данные из window._cianConfig (новый формат страниц ЦИАН)"""
+        data: Dict[str, Any] = {}
+
+        coord_match = re.search(
+            r'"coordinates"\s*:\s*\{\s*"lat"\s*:\s*([0-9.+-]+)\s*,\s*"(?:lng|lon)"\s*:\s*([0-9.+-]+)\s*\}',
+            html,
+        )
+        if coord_match:
+            lat = float(coord_match.group(1))
+            lon = float(coord_match.group(2))
+            if lat != 0 or lon != 0:
+                data['location'] = {
+                    'lat': lat,
+                    'lon': lon,
+                }
+
+        address_parts_match = re.search(
+            r'"geo"\s*:\s*\{\s*"address"\s*:\s*\[(.*?)\]\s*,\s*"coordinates"',
+            html,
+            re.DOTALL,
+        )
+        if address_parts_match:
+            parts = re.findall(r'"fullName"\s*:\s*"([^"]+)"', address_parts_match.group(1))
+            if parts:
+                address = ', '.join(parts)
+                data['address'] = address
+                if 'location' not in data:
+                    data['location'] = {}
+                data['location']['address'] = address
+
+        return data
+
+    def _merge_cian_config_data(self, data: Dict[str, Any], cian_data: Dict[str, Any]) -> None:
+        """Дополняет данные из _cianConfig, если основные источники не дали координаты"""
+        if not cian_data:
+            return
+
+        location = data.get('location') or {}
+        cian_location = cian_data.get('location') or {}
+
+        lat = float(location.get('lat') or 0)
+        lon = float(location.get('lon') or 0)
+        has_valid_coords = (lat != 0 or lon != 0) and abs(lat) <= 90 and abs(lon) <= 180
+
+        if not has_valid_coords and cian_location:
+            data['location'] = {**location, **cian_location}
+        elif cian_location.get('address') and not location.get('address'):
+            data.setdefault('location', {})['address'] = cian_location['address']
+
+        if not data.get('address') and cian_data.get('address'):
+            data['address'] = cian_data['address']
     
     def _extract_from_json_ld(self, soup: BeautifulSoup) -> Dict[str, Any]:
         """Извлекает данные из JSON-LD разметки (Product)"""

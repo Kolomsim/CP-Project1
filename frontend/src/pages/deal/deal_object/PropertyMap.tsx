@@ -1,4 +1,5 @@
 import { Box, Text } from '@mantine/core'
+import { buildYandexMapEmbedUrl } from '../../../lib/map'
 import classes from './DealObject.module.css'
 
 type PropertyMapProps = {
@@ -8,8 +9,7 @@ type PropertyMapProps = {
 }
 
 export function PropertyMap({ lat, lon, address }: PropertyMapProps) {
-  const coords = `${lon},${lat}`
-  const mapSrc = `https://yandex.ru/map-widget/v1/?ll=${encodeURIComponent(coords)}&z=16&pt=${encodeURIComponent(`${coords},pm2rdm`)}&text=${encodeURIComponent(address)}`
+  const mapSrc = buildYandexMapEmbedUrl({ lat, lon, address })
 
   return (
     <Box className={classes.mapSection}>

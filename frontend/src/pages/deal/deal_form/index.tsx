@@ -53,8 +53,15 @@ export default function DealFormPage() {
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
+	const missingFields = [
+		!citizenship && 'гражданство',
+		!maritalStatus && 'семейное положение',
+		!purchaseMethod && 'способ покупки',
+	].filter(Boolean) as string[]
+
 	const handleSubmit = async () => {
-		if (!citizenship || !maritalStatus || !purchaseMethod) {
+		if (missingFields.length > 0) {
+			setError(`Заполните все поля: ${missingFields.join(', ')}.`)
 			return
 		}
 
@@ -64,13 +71,18 @@ export default function DealFormPage() {
 		try {
 			clearDealSession()
 			const sessionId = await saveBuyerInfo({
-				citizenship,
-				maritalStatus,
-				purchaseMethod,
+				citizenship: citizenship!,
+				maritalStatus: maritalStatus!,
+				purchaseMethod: purchaseMethod!,
 			})
 			setDealSessionId(sessionId)
 			navigate('/deal/deal_object')
 		} catch (err) {
+			if (err instanceof TypeError || (err instanceof Error && err.message.includes('fetch'))) {
+				setError('Не удалось связаться с сервером. Убедитесь, что бэкенд запущен на порту 8000.')
+				return
+			}
+
 			setError(err instanceof Error ? err.message : 'Не удалось сохранить данные.')
 		} finally {
 			setLoading(false)
@@ -118,14 +130,7 @@ export default function DealFormPage() {
 						</Alert>
 					)}
 
-					<Button
-						fullWidth
-						size='md'
-						mt='xl'
-						onClick={() => void handleSubmit()}
-						loading={loading}
-						disabled={!citizenship || !maritalStatus || !purchaseMethod}
-					>
+					<Button fullWidth size='md' mt='xl' onClick={() => void handleSubmit()} loading={loading}>
 						Продолжить
 					</Button>
 				</Stack>

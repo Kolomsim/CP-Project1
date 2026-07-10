@@ -1,7 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 type ApiErrorBody = {
-	detail?: string
+	detail?: string | Array<{ msg?: string; loc?: Array<string | number> }>
 }
 
 export class ApiError extends Error {
@@ -17,7 +17,16 @@ export class ApiError extends Error {
 async function parseError(response: Response): Promise<string> {
 	try {
 		const body = (await response.json()) as ApiErrorBody
-		if (body.detail) {
+		if (Array.isArray(body.detail)) {
+			const message = body.detail
+				.map(item => item.msg)
+				.filter(Boolean)
+				.join('. ')
+			if (message) {
+				return message
+			}
+		}
+		if (typeof body.detail === 'string' && body.detail) {
 			return body.detail
 		}
 	} catch {

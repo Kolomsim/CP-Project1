@@ -21,5 +21,6 @@ export type PropertyPreview = {
   location: {
     lat: number
     lon: number
+    address?: string
   }
 }

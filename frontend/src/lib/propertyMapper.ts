@@ -87,6 +87,7 @@ export function mapApiPropertyToPreview(data: ApiPropertyPreview): PropertyPrevi
     location: {
       lat: data.location.lat,
       lon: data.location.lon,
+      address: data.location.address ?? undefined,
     },
   }
 }

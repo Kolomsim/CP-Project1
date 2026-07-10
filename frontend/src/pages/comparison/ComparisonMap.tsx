@@ -1,4 +1,5 @@
 import { Box, Paper, SimpleGrid, Text, Title } from '@mantine/core'
+import { buildOsmMapEmbedUrl } from '../../lib/map'
 import type { PropertyPreview } from '../../types/property'
 
 export interface ComparisonMapProps {
