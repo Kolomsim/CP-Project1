@@ -37,8 +37,7 @@ function mapToPropertyPreview(src: DealPropertyPreview): PropertyPreview {
 		rooms: src.rooms,
 		property_type: src.propertyType,
 		deal_type: src.dealType,
-		description: src.description,
-		seller: src.seller,
+		seller: { name: '' },
 		location: {
 			lat: src.location.lat,
 			lon: src.location.lon,

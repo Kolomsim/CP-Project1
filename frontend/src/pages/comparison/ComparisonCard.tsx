@@ -112,12 +112,8 @@ export function ComparisonCard({ property, rating, side, comparisons }: Comparis
 					))}
 				</Stack>
 
-				{/* Seller */}
+				{/* Platform */}
 				<Text size='xs' c='dimmed' mt='xs'>
-					Продавец: {property.seller.name}
-					{property.seller.phone && ` • ${property.seller.phone}`}
-				</Text>
-				<Text size='xs' c='dimmed'>
 					Платформа: {property.platform}
 				</Text>
 			</Stack>
