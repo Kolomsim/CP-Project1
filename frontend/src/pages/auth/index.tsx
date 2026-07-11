@@ -9,42 +9,60 @@ import {
 	Text,
 	TextInput,
 	Alert,
+	CopyButton,
+	ActionIcon,
+	Tooltip,
+	Input,
+	Box,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { upperFirst, useToggle } from '@mantine/hooks'
 import { useNavigate } from 'react-router'
-import { IconInfoCircle } from '@tabler/icons-react'
-import { useState } from 'react'
+import { IconInfoCircle, IconCheck, IconCopy } from '@tabler/icons-react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { suggestUsername } from '../../services/auth'
 
 export function AuthPage(props: PaperProps) {
 	const [type, toggle] = useToggle(['login', 'register'])
 	const [error, setError] = useState<string | null>(null)
+	const [generatedUsername, setGeneratedUsername] = useState<string | null>(null)
+	const [loadingUsername, setLoadingUsername] = useState(false)
 	const [loading, setLoading] = useState(false)
 	const navigate = useNavigate()
 	const { login, register, isAuthenticated } = useAuth()
 
 	const form = useForm({
 		initialValues: {
-			email: '',
-			name: '',
+			username: '',
 			password: '',
-			terms: true,
 		},
 
 		validate: {
-			email: val => (/^\S+@\S+$/.test(val) ? null : 'Неверный формат email'),
+			username: val => (type === 'login' && !val.trim() ? 'Логин обязателен' : null),
 			password: val => (val.length < 6 ? 'Пароль должен содержать не менее 6 символов' : null),
-			name: (val, _values, path) => {
-				if (path === 'register' && !val.trim()) {
-					return 'Имя обязательно'
-				}
-				return null
-			},
 		},
 	})
 
-	// Если уже авторизован — перенаправляем на главную
+	const loadSuggestedUsername = useCallback(async () => {
+		setLoadingUsername(true)
+		setError(null)
+		try {
+			const username = await suggestUsername()
+			setGeneratedUsername(username)
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Не удалось сгенерировать логин')
+		} finally {
+			setLoadingUsername(false)
+		}
+	}, [])
+
+	useEffect(() => {
+		if (type === 'register') {
+			loadSuggestedUsername()
+		}
+	}, [type, loadSuggestedUsername])
+
 	if (isAuthenticated) {
 		navigate('/')
 		return null
@@ -56,15 +74,28 @@ export function AuthPage(props: PaperProps) {
 
 		try {
 			if (type === 'register') {
-				await register(values.email, values.password, values.name)
+				if (!generatedUsername) {
+					setError('Логин ещё не сгенерирован')
+					return
+				}
+				await register(generatedUsername, values.password)
 			} else {
-				await login(values.email, values.password)
+				await login(values.username, values.password)
 			}
 			navigate('/')
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Произошла ошибка')
 		} finally {
 			setLoading(false)
+		}
+	}
+
+	const switchMode = () => {
+		toggle()
+		setError(null)
+		form.reset()
+		if (type === 'login') {
+			setGeneratedUsername(null)
 		}
 	}
 
@@ -82,27 +113,56 @@ export function AuthPage(props: PaperProps) {
 
 			<form onSubmit={form.onSubmit(handleSubmit)}>
 				<Stack>
-					{type === 'register' && (
+					{type === 'register' ? (
+						<Input.Wrapper
+							label='Логин'
+							description='Создаётся автоматически и не может быть изменён'
+						>
+							<Box
+								px='sm'
+								h={36}
+								style={{
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'space-between',
+									border: '1px solid var(--mantine-color-default-border)',
+									borderRadius: 'var(--mantine-radius-md)',
+									backgroundColor: 'var(--mantine-color-default-hover)',
+									userSelect: 'all',
+								}}
+							>
+								<Text ff='monospace' fw={500} size='sm' c={loadingUsername ? 'dimmed' : undefined}>
+									{loadingUsername ? 'Генерация логина...' : generatedUsername}
+								</Text>
+								{generatedUsername && (
+									<CopyButton value={generatedUsername} timeout={2000}>
+										{({ copied, copy }) => (
+											<Tooltip label={copied ? 'Скопировано' : 'Скопировать логин'} withArrow>
+												<ActionIcon
+													variant='subtle'
+													color={copied ? 'teal' : 'gray'}
+													onClick={copy}
+													aria-label='Скопировать логин'
+												>
+													{copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+												</ActionIcon>
+											</Tooltip>
+										)}
+									</CopyButton>
+								)}
+							</Box>
+						</Input.Wrapper>
+					) : (
 						<TextInput
-							label='Имя'
-							placeholder='Ваше имя'
-							value={form.values.name}
-							onChange={event => form.setFieldValue('name', event.currentTarget.value)}
-							error={form.errors.name && 'Имя обязательно'}
-							radius='md'
 							required
+							label='Логин'
+							placeholder='user_abc12345'
+							value={form.values.username}
+							onChange={event => form.setFieldValue('username', event.currentTarget.value)}
+							error={form.errors.username}
+							radius='md'
 						/>
 					)}
-
-					<TextInput
-						required
-						label='Email'
-						placeholder='email@example.com'
-						value={form.values.email}
-						onChange={event => form.setFieldValue('email', event.currentTarget.value)}
-						error={form.errors.email && 'Неверный формат email'}
-						radius='md'
-					/>
 
 					<PasswordInput
 						required
@@ -121,15 +181,17 @@ export function AuthPage(props: PaperProps) {
 						type='button'
 						c='bright'
 						opacity={0.85}
-						onClick={() => {
-							toggle()
-							setError(null)
-						}}
+						onClick={switchMode}
 						size='xs'
 					>
 						{type === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
 					</Anchor>
-					<Button type='submit' radius='xl' loading={loading}>
+					<Button
+						type='submit'
+						radius='xl'
+						loading={loading || (type === 'register' && loadingUsername)}
+						disabled={type === 'register' && !generatedUsername}
+					>
 						{upperFirst(type === 'register' ? 'Регистрация' : 'Войти')}
 					</Button>
 				</Group>

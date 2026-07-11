@@ -6,7 +6,6 @@ import { apiRequest, setTokens, clearTokens } from './api'
 
 export interface User {
 	id: string
-	email: string
 	name: string
 	created_at: string
 }
@@ -18,10 +17,17 @@ export interface TokenResponse {
 	user: User
 }
 
-export async function registerUser(email: string, password: string, name: string): Promise<TokenResponse> {
+export async function suggestUsername(): Promise<string> {
+	const data = await apiRequest<{ username: string }>('/auth/suggest-username', {
+		skipAuth: true,
+	})
+	return data.username
+}
+
+export async function registerUser(username: string, password: string): Promise<TokenResponse> {
 	const data = await apiRequest<TokenResponse>('/auth/register', {
 		method: 'POST',
-		body: JSON.stringify({ email, password, name }),
+		body: JSON.stringify({ username, password }),
 		skipAuth: true,
 	})
 
@@ -29,10 +35,10 @@ export async function registerUser(email: string, password: string, name: string
 	return data
 }
 
-export async function loginUser(email: string, password: string): Promise<TokenResponse> {
+export async function loginUser(username: string, password: string): Promise<TokenResponse> {
 	const data = await apiRequest<TokenResponse>('/auth/login', {
 		method: 'POST',
-		body: JSON.stringify({ email, password }),
+		body: JSON.stringify({ username, password }),
 		skipAuth: true,
 	})
 

@@ -2,23 +2,26 @@
 Модели для аутентификации пользователей.
 """
 
-from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional
+import re
 from datetime import datetime
+
+from pydantic import BaseModel, field_validator
+
+USERNAME_PATTERN = re.compile(r"^user_[a-z0-9]{8}$")
 
 
 class UserRegisterRequest(BaseModel):
     """Запрос на регистрацию нового пользователя."""
-    email: str
+    username: str
     password: str
-    name: str
 
-    @field_validator("email")
+    @field_validator("username")
     @classmethod
-    def validate_email(cls, v: str) -> str:
-        if "@" not in v or "." not in v:
-            raise ValueError("Неверный формат email")
-        return v.strip().lower()
+    def validate_username(cls, v: str) -> str:
+        username = v.strip()
+        if not USERNAME_PATTERN.match(username):
+            raise ValueError("Недопустимый формат логина")
+        return username
 
     @field_validator("password")
     @classmethod
@@ -30,8 +33,13 @@ class UserRegisterRequest(BaseModel):
 
 class UserLoginRequest(BaseModel):
     """Запрос на вход в систему."""
-    email: str
+    username: str
     password: str
+
+
+class SuggestUsernameResponse(BaseModel):
+    """Ответ с предложенным логином для регистрации."""
+    username: str
 
 
 class UserResponse(BaseModel):

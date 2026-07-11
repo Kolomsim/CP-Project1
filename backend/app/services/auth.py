@@ -18,7 +18,7 @@ from app.config import config
 from app.database.models import User
 from app.services.db_service import (
     create_user,
-    get_user_by_email,
+    get_user_by_name,
     get_user_by_id,
 )
 
@@ -101,48 +101,53 @@ def decode_refresh_token(token: str) -> Optional[dict]:
         return None
 
 
+async def suggest_username(db: AsyncSession) -> str:
+    """Генерирует свободный логин для отображения на форме регистрации."""
+    for _ in range(10):
+        username = _generate_random_login()
+        if await get_user_by_name(db, username) is None:
+            return username
+    raise RuntimeError("Не удалось сгенерировать уникальный логин")
+
+
 async def register_user(
     db: AsyncSession,
-    email: str,
+    username: str,
     password: str,
-    name: str,
 ) -> Optional[User]:
     """
-    Регистрирует нового пользователя.
-    Если name не указано или пустое — генерирует случайный логин.
-    Возвращает User или None, если email уже занят.
+    Регистрирует нового пользователя с заранее сгенерированным логином.
+    Возвращает None, если логин уже занят.
     """
-    email = email.strip().lower()
+    username = username.strip()
 
-    existing = await get_user_by_email(db, email)
-    if existing:
-        logger.warning(f"Registration attempt with existing email: {email}")
+    if await get_user_by_name(db, username) is not None:
+        logger.warning(f"Registration attempt with existing username: {username}")
         return None
 
-    # Если имя не указано — генерируем случайное
-    final_name = name.strip() if name and name.strip() else _generate_random_login()
+    internal_email = f"{username}@local.internal"
 
     user = await create_user(
         db=db,
-        email=email,
+        email=internal_email,
         hashed_password=_hash_password(password),
-        name=final_name,
+        name=username,
     )
-    logger.info(f"User registered: {email} (name: {final_name})")
+    logger.info(f"User registered: {username}")
     return user
 
 
 async def authenticate_user(
     db: AsyncSession,
-    email: str,
+    username: str,
     password: str,
 ) -> Optional[User]:
-    """Проверяет email и пароль. Возвращает User или None."""
-    email = email.strip().lower()
-    user = await get_user_by_email(db, email)
+    """Проверяет логин и пароль. Возвращает User или None."""
+    username = username.strip()
+    user = await get_user_by_name(db, username)
 
     if not user or not verify_password(password, user.hashed_password):
-        logger.warning(f"Failed login attempt for: {email}")
+        logger.warning(f"Failed login attempt for: {username}")
         return None
 
     return user

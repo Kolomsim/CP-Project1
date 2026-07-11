@@ -13,9 +13,11 @@ from app.models.user import (
     TokenResponse,
     RefreshTokenRequest,
     UserResponse,
+    SuggestUsernameResponse,
 )
 from app.services.auth import (
     register_user,
+    suggest_username,
     authenticate_user,
     create_tokens,
     refresh_access_token,
@@ -51,14 +53,21 @@ async def get_current_user_id(
     return payload["sub"]
 
 
+@router.get("/suggest-username", response_model=SuggestUsernameResponse)
+async def get_suggest_username(db: AsyncSession = Depends(get_db)):
+    """Возвращает свободный логин для формы регистрации."""
+    username = await suggest_username(db)
+    return SuggestUsernameResponse(username=username)
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: UserRegisterRequest, db: AsyncSession = Depends(get_db)):
-    """Регистрация нового пользователя."""
-    user = await register_user(db, body.email, body.password, body.name)
+    """Регистрация нового пользователя с заранее сгенерированным логином."""
+    user = await register_user(db, body.username, body.password)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Пользователь с таким email уже существует",
+            detail="Этот логин уже занят. Обновите страницу и попробуйте снова",
         )
 
     access_token, refresh_token = create_tokens(user)
@@ -77,11 +86,11 @@ async def register(body: UserRegisterRequest, db: AsyncSession = Depends(get_db)
 @router.post("/login", response_model=TokenResponse)
 async def login(body: UserLoginRequest, db: AsyncSession = Depends(get_db)):
     """Вход в систему."""
-    user = await authenticate_user(db, body.email, body.password)
+    user = await authenticate_user(db, body.username, body.password)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверный email или пароль",
+            detail="Неверный логин или пароль",
         )
 
     access_token, refresh_token = create_tokens(user)

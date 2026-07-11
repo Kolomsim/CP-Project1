@@ -44,6 +44,12 @@ async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     return result.scalar_one_or_none()
 
 
+async def get_user_by_name(db: AsyncSession, name: str) -> Optional[User]:
+    """Find user by username (stored in name field)."""
+    result = await db.execute(select(User).where(User.name == name))
+    return result.scalar_one_or_none()
+
+
 async def get_user_by_id(db: AsyncSession, user_id: str) -> Optional[User]:
     """Find user by ID."""
     result = await db.execute(select(User).where(User.id == user_id))

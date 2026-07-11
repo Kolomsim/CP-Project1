@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
-import { Group, Text, Menu, Avatar, Button } from '@mantine/core'
-import { IconGitCompare, IconHeart, IconUser, IconLogout, IconChevronDown } from '@tabler/icons-react'
+import { Group, Text, Menu, Avatar, Button, CopyButton, ActionIcon, Tooltip } from '@mantine/core'
+import { IconGitCompare, IconHeart, IconUser, IconLogout, IconChevronDown, IconCopy, IconCheck } from '@tabler/icons-react'
 import { useAuth } from '../context/AuthContext'
 
 export function Header() {
@@ -55,6 +55,31 @@ export function Header() {
 									</Button>
 								</Menu.Target>
 								<Menu.Dropdown>
+									<Menu.Label>Ваш логин</Menu.Label>
+									<Menu.Item
+										closeMenuOnClick={false}
+										rightSection={
+											<CopyButton value={user.name} timeout={2000}>
+												{({ copied, copy }) => (
+													<Tooltip label={copied ? 'Скопировано' : 'Скопировать'} withArrow position='right'>
+														<ActionIcon
+															variant='subtle'
+															color={copied ? 'teal' : 'gray'}
+															size='sm'
+															onClick={copy}
+														>
+															{copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+														</ActionIcon>
+													</Tooltip>
+												)}
+											</CopyButton>
+										}
+									>
+										<Text size='sm' ff='monospace' fw={500}>
+											{user.name}
+										</Text>
+									</Menu.Item>
+									<Menu.Divider />
 									<Menu.Item leftSection={<IconLogout size={16} />} color='red' onClick={logout}>
 										Выйти
 									</Menu.Item>
