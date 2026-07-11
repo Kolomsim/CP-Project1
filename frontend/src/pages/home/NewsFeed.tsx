@@ -8,7 +8,7 @@ export interface NewsFeedProps {
 	pageSize?: number
 }
 
-export function NewsFeed({ items, title = 'Актуальные изменения законодательства', pageSize = 5 }: NewsFeedProps) {
+export function NewsFeed({ items, title = 'Недавние статьи', pageSize = 5 }: NewsFeedProps) {
 	const [page, setPage] = useState(1)
 	const totalPages = Math.ceil(items.length / pageSize)
 	const paginatedItems = items.slice(0, page * pageSize)
