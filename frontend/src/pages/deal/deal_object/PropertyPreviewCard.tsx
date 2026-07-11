@@ -7,12 +7,26 @@ type PropertyPreviewCardProps = {
   property: PropertyPreview
 }
 
+const EMPTY_VALUE = '—'
+
+function isMissingValue(value: number | null | undefined): boolean {
+  return value == null || value === 0
+}
+
 function formatPrice(value: number) {
   return `${new Intl.NumberFormat('ru-RU').format(value)} ₽`
 }
 
 function formatPricePerSqm(price: number, area: number) {
   return `${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price / area)} ₽/м²`
+}
+
+function formatDetailNumber(value: number | null | undefined): string {
+  return isMissingValue(value) ? EMPTY_VALUE : String(value)
+}
+
+function formatDetailArea(value: number | null | undefined): string {
+  return isMissingValue(value) ? EMPTY_VALUE : `${value} м²`
 }
 
 function DetailItem({ label, value }: { label: string; value: string }) {
@@ -29,7 +43,7 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 }
 
 export function PropertyPreviewCard({ property }: PropertyPreviewCardProps) {
-  const titleLine = `${property.title}, ${property.totalArea} м², ${property.floor}/${property.totalFloors} этаж`
+  const titleLine = `${property.title}, ${formatDetailArea(property.totalArea)}, ${formatDetailNumber(property.floor)}/${formatDetailNumber(property.totalFloors)} этаж`
 
   return (
     <Paper withBorder radius="md" p="lg" className={classes.previewCard}>
@@ -41,9 +55,6 @@ export function PropertyPreviewCard({ property }: PropertyPreviewCardProps) {
           <Text size="sm" c="dimmed" mt={4}>
             {property.address}
           </Text>
-          <Text size="sm" mt="sm" lineClamp={3}>
-            {property.description}
-          </Text>
         </div>
 
         <Group justify="space-between" align="flex-end" wrap="wrap" gap="xs">
@@ -51,7 +62,7 @@ export function PropertyPreviewCard({ property }: PropertyPreviewCardProps) {
             {formatPrice(property.price)}
           </Text>
           <Text size="sm" c="dimmed">
-            {formatPricePerSqm(property.price, property.totalArea)}
+            {isMissingValue(property.totalArea) ? EMPTY_VALUE : formatPricePerSqm(property.price, property.totalArea)}
           </Text>
         </Group>
 
@@ -73,13 +84,13 @@ export function PropertyPreviewCard({ property }: PropertyPreviewCardProps) {
 
           <Tabs.Panel value="about" pt="md">
             <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md">
-              <DetailItem label="Комнат" value={String(property.rooms)} />
-              <DetailItem label="Тип жилья" value={property.propertyType} />
-              <DetailItem label="Площадь" value={`${property.totalArea} м²`} />
-              <DetailItem label="Жилая" value={`${property.livingArea} м²`} />
-              <DetailItem label="Тип сделки" value={property.dealType} />
-              <DetailItem label="Кухня" value={`${property.kitchenArea} м²`} />
-              <DetailItem label="Этаж" value={String(property.floor)} />
+              <DetailItem label="Комнат" value={formatDetailNumber(property.rooms)} />
+              <DetailItem label="Тип жилья" value={property.propertyType || EMPTY_VALUE} />
+              <DetailItem label="Площадь" value={formatDetailArea(property.totalArea)} />
+              <DetailItem label="Жилая" value={formatDetailArea(property.livingArea)} />
+              <DetailItem label="Тип сделки" value={property.dealType === 'не указан' ? EMPTY_VALUE : property.dealType || EMPTY_VALUE} />
+              <DetailItem label="Кухня" value={formatDetailArea(property.kitchenArea)} />
+              <DetailItem label="Этаж" value={formatDetailNumber(property.floor)} />
             </SimpleGrid>
           </Tabs.Panel>
         </Tabs>
