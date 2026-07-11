@@ -139,7 +139,7 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Локальные проверки на основе данных покупателя из анкеты."""
     risks: List[Dict[str, Any]] = []
     purchase_method = _field_value(buyer_info.get("purchase_method"))
-    marital_status = _field_value(buyer_info.get("marital_status"))
+    type_of_property = _field_value(buyer_info.get("type_of_property"))
     citizenship = _field_value(buyer_info.get("citizenship"))
 
     if purchase_method == "Материнский капитал":
@@ -188,13 +188,23 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
             "article_link": "/kb",
         })
 
-    if marital_status == "Женат/Замужем":
+    if type_of_property == "новостройка":
         risks.append({
-            "type": "spouse_consent",
+            "type": "primary_market",
             "severity": RiskLevel.MEDIUM,
-            "title": "Требуется согласие супруга",
-            "description": "При покупке недвижимости в браке обычно необходимо нотариальное согласие супруга.",
-            "recommendation": "Подготовьте нотариальное согласие супруга на совершение сделки.",
+            "title": "Покупка на первичном рынке",
+            "description": "При покупке новостройки важно проверить застройщика, сроки сдачи и условия договора долевого участия.",
+            "recommendation": "Изучите проектную декларацию и историю сдачи объектов застройщика.",
+            "article_link": "/kb",
+        })
+
+    if type_of_property == "вторичка":
+        risks.append({
+            "type": "secondary_market",
+            "severity": RiskLevel.MEDIUM,
+            "title": "Покупка на вторичном рынке",
+            "description": "При покупке вторичного жилья важно проверить историю объекта, права собственников и отсутствие обременений.",
+            "recommendation": "Запросите свежую выписку из ЕГРН и проверьте всех зарегистрированных жильцов.",
             "article_link": "/kb",
         })
 

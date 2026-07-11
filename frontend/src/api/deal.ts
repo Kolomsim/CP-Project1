@@ -6,7 +6,7 @@ import type { DealCheckResult, DealRisk } from '../pages/deal/deal_result/types'
 
 type BuyerInfoPayload = {
 	citizenship: string
-	marital_status: string
+	type_of_property: string
 	purchase_method: string
 }
 
@@ -44,12 +44,9 @@ const CITIZENSHIP_MAP: Record<string, string> = {
 	none: 'Беларусь',
 }
 
-const MARITAL_STATUS_MAP: Record<string, string> = {
-	single: 'Холост',
-	married: 'Женат/Замужем',
-	divorced: 'Холост',
-	widowed: 'Холост',
-	cohabitation: 'Холост',
+const TYPE_OF_PROPERTY_MAP: Record<string, string> = {
+	primary_market: 'новостройка',
+	secondary_market: 'вторичка',
 }
 
 const PURCHASE_METHOD_MAP: Record<string, string> = {
@@ -75,12 +72,12 @@ function mapRisk(risk: ApiRisk): DealRisk {
 
 export async function saveBuyerInfo(form: {
 	citizenship: string
-	maritalStatus: string
+	typeOfProperty: string
 	purchaseMethod: string
 }): Promise<string> {
 	const payload: BuyerInfoPayload = {
 		citizenship: CITIZENSHIP_MAP[form.citizenship] ?? 'Россия',
-		marital_status: MARITAL_STATUS_MAP[form.maritalStatus] ?? 'Холост',
+		type_of_property: TYPE_OF_PROPERTY_MAP[form.typeOfProperty] ?? 'вторичка',
 		purchase_method: PURCHASE_METHOD_MAP[form.purchaseMethod] ?? 'Сразу',
 	}
 

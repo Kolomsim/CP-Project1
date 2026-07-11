@@ -10,20 +10,15 @@ const citizenshipData = [
 	{ value: 'foreign', label: 'Иностранное гражданство' },
 ]
 
-const maritalStatusData = [
-	{ value: 'single', label: 'Не женат/не замужем' },
-	{ value: 'married', label: 'Женат/замужем' },
-	{ value: 'divorced', label: 'Разведен/разведена' },
-	{ value: 'widowed', label: 'Вдовец/вдова' },
-	{ value: 'cohabitation', label: 'Гражданский брак' },
+const typeOfPropertyData = [
+	{ value: 'primary_market', label: 'Первичный рынок' },
+	{ value: 'secondary_market', label: 'Вторичный рынок' },
 ]
 
 const purchaseMethodData = [
 	{ value: 'full_payment', label: '100% оплата (собственные средства)' },
 	{ value: 'mortgage', label: 'Ипотека' },
-	{ value: 'installment', label: 'Рассрочка от застройщика' },
 	{ value: 'mat_capital', label: 'Материнский капитал' },
-	{ value: 'state_support', label: 'Государственная поддержка' },
 	{ value: 'other', label: 'Другое' },
 ]
 
@@ -48,14 +43,14 @@ const containedInputStyles = {
 export default function DealFormPage() {
 	const navigate = useNavigate()
 	const [citizenship, setCitizenship] = useState<string | null>(null)
-	const [maritalStatus, setMaritalStatus] = useState<string | null>(null)
+	const [typeOfProperty, setTypeOfProperty] = useState<string | null>(null)
 	const [purchaseMethod, setPurchaseMethod] = useState<string | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
 	const missingFields = [
 		!citizenship && 'гражданство',
-		!maritalStatus && 'семейное положение',
+		!typeOfProperty && 'тип недвижимости',
 		!purchaseMethod && 'способ покупки',
 	].filter(Boolean) as string[]
 
@@ -72,7 +67,7 @@ export default function DealFormPage() {
 			clearDealSession()
 			const sessionId = await saveBuyerInfo({
 				citizenship: citizenship!,
-				maritalStatus: maritalStatus!,
+				typeOfProperty: typeOfProperty!,
 				purchaseMethod: purchaseMethod!,
 			})
 			setDealSessionId(sessionId)
@@ -107,11 +102,11 @@ export default function DealFormPage() {
 					/>
 
 					<Select
-						label='Семейное положение'
-						placeholder='Укажите статус'
-						data={maritalStatusData}
-						value={maritalStatus}
-						onChange={value => setMaritalStatus(value)}
+						label='Тип недвижимости'
+						placeholder='Выберите тип недвижимости'
+						data={typeOfPropertyData}
+						value={typeOfProperty}
+						onChange={value => setTypeOfProperty(value)}
 						styles={containedInputStyles}
 					/>
 
