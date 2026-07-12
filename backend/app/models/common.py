@@ -20,6 +20,9 @@ class FamilyStatus(str, Enum):
     MARRIED = "Женат/Замужем"
 
 class DealType(str, Enum):
-    MORTRAGE = "Ипотека"
+    MORTGAGE = "Ипотека"
     IMMEDIATELY = "Сразу"
     LOAN = "Кредит"
+    MAT_CAPITAL = "Материнский капитал"
+    STATE_SUPPORT = "Государственная поддержка"
+    OTHER = "Другое"

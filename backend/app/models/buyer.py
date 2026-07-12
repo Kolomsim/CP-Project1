@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from app.models.common import Citizenship, FamilyStatus, DealType
+from app.models.common import Citizenship, PropertyType, DealType
 
 # Данные, которые отправляет пользователь в форме
 class BuyerInfoRequest(BaseModel):
@@ -9,10 +9,10 @@ class BuyerInfoRequest(BaseModel):
         description="Гражданство покупателя",
         example="Россия"
     )
-    marital_status: FamilyStatus = Field(
+    type_of_property: PropertyType = Field(
         ...,
-        description="Семейное положение",
-        example="Холост"
+        description="Тип недвижимости",
+        example="новостройка"
     )
     purchase_method: DealType = Field(
         ...,

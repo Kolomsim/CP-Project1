@@ -8,13 +8,22 @@ SUPPORTED_PLATFORMS = {
     "domclick": "Домклик"
 }
 
+def _normalize_url(url: str) -> str:
+    value = str(url).strip()
+    if value and not value.startswith(("http://", "https://")):
+        value = f"https://{value}"
+    return value
+
+
 def validate_url(url: str) -> bool:
     """
     Проверяет, что ссылка ведёт на поддерживаемый сайт.
     """
-    if not url or not isinstance(url, str):
-        
+    if not url:
         return False
+
+    url = _normalize_url(url)
+    
     try:
         parsed = urlparse(url)
     except Exception:
@@ -36,8 +45,10 @@ def detect_platform(url: str) -> str | None:
     Определяет платформу по URL.
     Возвращает название платформы или None.
     """
-    if not url or not isinstance(url, str):
+    if not url:
         return None
+
+    url = _normalize_url(url)
     try:
         parsed = urlparse(url)
     except Exception:

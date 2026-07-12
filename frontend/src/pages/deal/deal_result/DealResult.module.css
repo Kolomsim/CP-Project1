@@ -1,0 +1,12 @@
+.page {
+  padding-top: var(--mantine-spacing-xl);
+  padding-bottom: calc(var(--mantine-spacing-xl) * 2);
+}
+
+.riskSection {
+  background: var(--mantine-color-gray-1);
+}
+
+.riskItem {
+  background: var(--mantine-color-white);
+}

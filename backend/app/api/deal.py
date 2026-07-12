@@ -3,15 +3,19 @@
 import logging
 from fastapi import APIRouter, Depends, status
 
-from app.models import (
-    BuyerInfoRequest,
-    BuyerInfoResponse,
-    PropertyInfoRequest,
-    PropertyPreviewResponse,
-    CheckRisksResponse,
-)
+# from app.models import (
+#     BuyerInfoRequest,
+#     BuyerInfoResponse,
+#     PropertyInfoRequest,
+#     # PropertyPreviewResponse,
+#     CheckRisksResponse,
+# )
+from app.models.property import PropertyPreviewResponse
+from app.models.risks import CheckRisksResponse
+from app.models.buyer import BuyerInfoRequest, BuyerInfoResponse
+from app.models.property import PropertyInfoRequest
 from app.services.session_manager import create_session, update_session, get_session
-from app.services.property_parser import parse_property_url
+from app.services.property_parser import parse_property_url, ParserError as PropertyParserError
 from app.services.risk_checker import check_all_risks
 from app.api.dependencies import get_session_data
 from app.api.exceptions import BusinessError, ParserError, ExternalAPITimeoutError
@@ -35,7 +39,7 @@ async def save_buyer_info(request: BuyerInfoRequest):
         # Создаём новую сессию
         session_id = create_session()
         # Сохраняем данные покупателя
-        update_session(session_id, {"buyer_info": request.dict()})
+        update_session(session_id, {"buyer_info": request.model_dump(mode="json")})
         logger.info(f"Создана сессия {session_id} для покупателя")
         return BuyerInfoResponse(
             success=True,
@@ -65,12 +69,17 @@ async def get_property_preview(request: PropertyInfoRequest):
 
         # Парсим ссылку (асинхронно)
         try:
-            property_data = await parse_property_url(request.url)
+            property_data = parse_property_url(str(request.url))
         except ValueError as e:
             raise ParserError(str(e))
+        except PropertyParserError as e:
+            raise ParserError(str(e))
         except Exception as e:
+            error_text = str(e).lower()
             logger.error(f"Ошибка парсинга ссылки {request.url}: {e}")
-            raise ExternalAPITimeoutError("парсинг ссылки")
+            if "timed out" in error_text or "timeout" in error_text:
+                raise ParserError("ЦИАН не отвечает. Подождите минуту и попробуйте снова.")
+            raise ParserError("Не удалось загрузить данные с ЦИАН. Попробуйте ещё раз через минуту.")
 
         # Сохраняем данные объекта в сессию
         update_session(request.session_id, {"property_data": property_data})
@@ -78,9 +87,9 @@ async def get_property_preview(request: PropertyInfoRequest):
         # Возвращаем предпросмотр
         return PropertyPreviewResponse(**property_data)
 
+    except BusinessError:
+        raise
     except Exception as e:
-        if isinstance(e, BusinessError):
-            raise
         logger.error(f"Неожиданная ошибка в /property-info: {e}", exc_info=True)
         raise BusinessError("Не удалось обработать ссылку. Проверьте корректность URL.")
 
@@ -120,6 +129,8 @@ async def check_risks(session_id: str):
                 seller_name=seller_name,
                 inn=inn,
                 cadastral_number=cadastral_number,
+                buyer_info=buyer_info,
+                property_data=property_data,
             )
         except Exception as e:
             logger.error(f"Ошибка при проверке рисков: {e}")

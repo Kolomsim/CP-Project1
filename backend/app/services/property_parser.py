@@ -2,6 +2,7 @@ import re
 import json
 import logging
 from curl_cffi import requests
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_message
 
 from typing import Optional, Dict, Any
 from bs4 import BeautifulSoup
@@ -38,22 +39,25 @@ class CianListingParser:
     def parse_listing(self, url: str) -> Dict[str, Any]:
         """Парсит объявление с использованием requests"""
         try:
-            response = self.session.get(url, timeout=30)
-            response.raise_for_status()
-            
-            html = response.text
+            html = self._fetch_page(url)
             soup = BeautifulSoup(html, 'html.parser')
-            
-            data = self._extract_data(soup, html, url)
-            
-            return data
-            
-        except requests.RequestException as e:
-            logger.error(f"Ошибка HTTP запроса: {e}")
-            raise Exception(f"Не удалось загрузить страницу: {str(e)}")
+            return self._extract_data(soup, html, url)
         except Exception as e:
-            logger.error(f"Ошибка парсинга ЦИАН: {e}")
-            raise Exception(f"Не удалось спарсить объявление: {str(e)}")
+            logger.error(f"Ошибка HTTP запроса или парсинга: {e}")
+            raise Exception(f"Не удалось загрузить или разобрать страницу: {str(e)}")
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=8),
+        retry=retry_if_exception_message(match=".*(timed out|Timeout|Connection).*"),
+        reraise=True,
+    )
+    def _fetch_page(self, url: str) -> str:
+        session = requests.Session(impersonate="chrome120")
+        session.headers.update(self.headers)
+        response = session.get(url, timeout=45)
+        response.raise_for_status()
+        return response.text
     
     @staticmethod
     def _merge_missing(data: Dict[str, Any], new_data: Dict[str, Any]) -> None:
@@ -69,35 +73,33 @@ class CianListingParser:
                     data[key].setdefault(sub_key, sub_value)
 
     def _extract_data(self, soup: BeautifulSoup, html: str, url: str) -> Dict[str, Any]:
-        """Извлекает данные из HTML, комбинируя источники по надёжности."""
-        data: Dict[str, Any] = {}
+        """Извлекает данные из HTML"""
+        data = {}
+        
+        # 1. Извлекаем из __NEXT_DATA__ (основной источник - полная информация)
+        next_data = self._extract_from_next_data(soup)
+        data.update(next_data)
+        
+        # 2. Извлекаем из JSON-LD (цена, название, описание)
+        json_ld_data = self._extract_from_json_ld(soup)
+        data.update(json_ld_data)
+        
+        # 3. Извлекаем из встроенного JSON в script тегах (аналитика)
+        inline_json_data = self._extract_from_inline_json(soup, html)
+        data.update(inline_json_data)
+        
+        # 4. Извлекаем из OpenGraph мета-тегов (этаж, комнаты, адрес)
+        og_data = self._extract_from_opengraph(soup)
+        data.update(og_data)
+        
+        # 5. Извлекаем из HTML разметки (дополнительные данные)
+        html_data = self._extract_from_html(soup, html, url)
+        data.update(html_data)
 
-        # 1. window._cianConfig — самый надёжный источник (координаты, адрес,
-        #    площади, цена, продавец).
-        #    БЫЛО: сюда попадал ПОЛНЫЙ результат _extract_from_cian_config
-        #    (включая seller с accountType/companyName, price, площади...),
-        #    но наверх пробрасывалась только 'location' — всё остальное
-        #    отбрасывалось (`coordinates.get("location", "")`, а не
-        #    `data.update(cian_config_data)`). Поэтому accountType/companyName
-        #    извлекались правильно ВНУТРИ метода, но никогда не долетали до
-        #    финального результата. Теперь мёржим весь словарь целиком.
+        # 6. Fallback: новый формат страниц ЦИАН (window._cianConfig)
         cian_config_data = self._extract_from_cian_config(html)
-        data.update(cian_config_data)
-        if 'location' in data:
-            data['coordinates'] = data.pop('location')
-
-        # 2-5. Остальные источники ТОЛЬКО дополняют то, чего ещё не нашли —
-        # не перезаписывают уже найденные, более надёжные данные из cianConfig.
-        for extractor in (
-            lambda: self._extract_from_json_ld(soup),
-            lambda: self._extract_from_inline_json(soup, html),
-            lambda: self._extract_from_opengraph(soup),
-            lambda: self._extract_from_html(soup, html, url),
-        ):
-            self._merge_missing(data, extractor())
-
-        data.pop('location', None)
-
+        self._merge_cian_config_data(data, cian_config_data)
+        
         return data
     
     @staticmethod
@@ -336,6 +338,59 @@ class CianListingParser:
             logger.debug(f"Ошибка при разборе cianConfig: {e}")
 
         return data
+
+    def _extract_from_cian_config(self, html: str) -> Dict[str, Any]:
+        """Извлекает данные из window._cianConfig (новый формат страниц ЦИАН)"""
+        data: Dict[str, Any] = {}
+
+        coord_match = re.search(
+            r'"coordinates"\s*:\s*\{\s*"lat"\s*:\s*([0-9.+-]+)\s*,\s*"(?:lng|lon)"\s*:\s*([0-9.+-]+)\s*\}',
+            html,
+        )
+        if coord_match:
+            lat = float(coord_match.group(1))
+            lon = float(coord_match.group(2))
+            if lat != 0 or lon != 0:
+                data['location'] = {
+                    'lat': lat,
+                    'lon': lon,
+                }
+
+        address_parts_match = re.search(
+            r'"geo"\s*:\s*\{\s*"address"\s*:\s*\[(.*?)\]\s*,\s*"coordinates"',
+            html,
+            re.DOTALL,
+        )
+        if address_parts_match:
+            parts = re.findall(r'"fullName"\s*:\s*"([^"]+)"', address_parts_match.group(1))
+            if parts:
+                address = ', '.join(parts)
+                data['address'] = address
+                if 'location' not in data:
+                    data['location'] = {}
+                data['location']['address'] = address
+
+        return data
+
+    def _merge_cian_config_data(self, data: Dict[str, Any], cian_data: Dict[str, Any]) -> None:
+        """Дополняет данные из _cianConfig, если основные источники не дали координаты"""
+        if not cian_data:
+            return
+
+        location = data.get('location') or {}
+        cian_location = cian_data.get('location') or {}
+
+        lat = float(location.get('lat') or 0)
+        lon = float(location.get('lon') or 0)
+        has_valid_coords = (lat != 0 or lon != 0) and abs(lat) <= 90 and abs(lon) <= 180
+
+        if not has_valid_coords and cian_location:
+            data['location'] = {**location, **cian_location}
+        elif cian_location.get('address') and not location.get('address'):
+            data.setdefault('location', {})['address'] = cian_location['address']
+
+        if not data.get('address') and cian_data.get('address'):
+            data['address'] = cian_data['address']
     
     def _extract_from_json_ld(self, soup: BeautifulSoup) -> Dict[str, Any]:
         """Извлекает данные из JSON-LD разметки"""
@@ -579,9 +634,6 @@ class CianListingParser:
         digits = re.sub(r'[^\d]', '', str(price_str))
         return int(digits) if digits else 0
 
-"""
-Конец класса
-"""
 
 def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
     """Парсит отдельное объявление ЦИАН по URL."""
@@ -601,12 +653,14 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
         "inn": None,
     }
     
-    location = {
-        "lat": flat_data.get("coordinates", 0.0).get("lat", 0.0),
-        "lon": flat_data.get("coordinates", 0.0).get("lon", 0.0),
-        "address": flat_data.get("address", ""),
+    # Преобразуем в наш внутренний формат
+    location = flat_data.get("location") or {}
+    normalized_location = {
+        "lat": float(location.get("lat") or 0.0),
+        "lon": float(location.get("lon") or 0.0),
+        "address": location.get("address") or flat_data.get("address", ""),
     }
-    
+
     return {
         "id": obj_id,
         "platform": "ЦИАН",
@@ -623,7 +677,7 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
         "property_type": _map_property_type_from_url(flat_data.get("title", "Недвижимость")),
         "deal_type": _map_deal_type_from_url(url),
         "seller": seller,
-        "location": location,
+        "location": normalized_location,
         "description": flat_data.get("description", ""),
         "is_verified": False,
     }
@@ -670,9 +724,6 @@ async def parse_property_url(url: str) -> Optional[Dict[str, Any]]:
             return data
         except Exception as e:
             logger.error(f"Ошибка парсинга ЦИАН: {e}")
-            if config.DEBUG:
-                logger.warning("Падаем в мок-данные (режим DEBUG)")
-                return _get_mock_property_data(platform, obj_id, url)
             raise ParserError(f"Не удалось спарсить объект: {str(e)}")
     else:
         logger.warning(f"Платформа {platform} не поддерживается для реального парсинга, используем мок")

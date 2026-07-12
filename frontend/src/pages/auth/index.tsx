@@ -1,129 +1,201 @@
 import {
-    Anchor,
-    Checkbox,
-    Button,
-    Group,
-    Paper,
-    type PaperProps,
-    PasswordInput,
-    Stack,
-    Text,
-    TextInput,
-    UnstyledButton,
-  } from '@mantine/core';
-  import { useForm } from '@mantine/form';
-  import { upperFirst, useToggle } from '@mantine/hooks';
-  import { useState } from 'react';
-  import { AppLayout } from '../../components/AppLayout';
-  import classes from './CheckboxCard.module.css';
+	Anchor,
+	Button,
+	Group,
+	Paper,
+	type PaperProps,
+	PasswordInput,
+	Stack,
+	Text,
+	TextInput,
+	Alert,
+	CopyButton,
+	ActionIcon,
+	Tooltip,
+	Input,
+	Box,
+} from '@mantine/core'
+import { useForm } from '@mantine/form'
+import { upperFirst, useToggle } from '@mantine/hooks'
+import { useNavigate } from 'react-router'
+import { IconInfoCircle, IconCheck, IconCopy } from '@tabler/icons-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
+import { suggestUsername } from '../../services/auth'
 
-  
-  export function AuthPage(props: PaperProps) {
-    const [type, toggle] = useToggle(['login', 'register']);
-    const form = useForm({
-      initialValues: {
-        email: '',
-        name: '',
-        password: '',
-        terms: true,
-      },
-  
-      validate: {
-        email: (val) => (/^\S+@\S+$/.test(val) ? null : 'Invalid email'),
-        password: (val) => (val.length <= 6 ? 'Password should include at least 6 characters' : null),
-      },
-    });
+export function AuthPage(props: PaperProps) {
+	const [type, toggle] = useToggle(['login', 'register'])
+	const [error, setError] = useState<string | null>(null)
+	const [generatedUsername, setGeneratedUsername] = useState<string | null>(null)
+	const [loadingUsername, setLoadingUsername] = useState(false)
+	const [loading, setLoading] = useState(false)
+	const navigate = useNavigate()
+	const { login, register, isAuthenticated } = useAuth()
 
-    const [value, onChange] = useState(false);
-  
-    return (
-        <AppLayout>
-            <Paper radius="md" p="lg" withBorder {...props}>
-                <Text size="lg" fw={500} c="bright">
-                {type === 'register' ? 'Регистрация' : 'Вход в аккаунт'}
-                </Text>
-        
-                <form onSubmit={form.onSubmit(() => {})}>
-                <Stack>
-                    {type === 'register' && (
-                    <TextInput
-                        label="Name"
-                        placeholder="Your name"
-                        value={form.values.name}
-                        onChange={(event) => form.setFieldValue('name', event.currentTarget.value)}
-                        radius="md"
-                    />
-                    )}
-        
-                    <TextInput
-                    required
-                    label="Email"
-                    placeholder="email@example.com"
-                    value={form.values.email}
-                    onChange={(event) => form.setFieldValue('email', event.currentTarget.value)}
-                    error={form.errors.email && 'Invalid email'}
-                    radius="md"
-                    />
-        
-                    <PasswordInput
-                    required
-                    label="Password"
-                    placeholder="Your password"
-                    value={form.values.password}
-                    onChange={(event) => form.setFieldValue('password', event.currentTarget.value)}
-                    error={form.errors.password && 'Password should include at least 6 characters'}
-                    radius="md"
-                    />
-        
-                    {type === 'register' && (
-                    <Checkbox
-                        label="I accept terms and conditions"
-                        checked={form.values.terms}
-                        onChange={(event) => form.setFieldValue('terms', event.currentTarget.checked)}
-                    />
-                    )}
-                </Stack>
-        
-                <Group justify="space-between" mt="xl">
-                    <Anchor
-                    component="button"
-                    type="button"
-                    c="bright"
-                    opacity={0.85}
-                    onClick={() => toggle()}
-                    size="xs"
-                    >
-                    {type === 'register'
-                        ? 'Already have an account? Login'
-                        : "Don't have an account? Register"}
-                    </Anchor>
-                    {<Button type="submit" radius="xl">
-                    {upperFirst(type)}
-                    </Button>
+	const form = useForm({
+		initialValues: {
+			username: '',
+			password: '',
+		},
+
+		validate: {
+			username: val => (type === 'login' && !val.trim() ? 'Логин обязателен' : null),
+			password: val => (val.length < 6 ? 'Пароль должен содержать не менее 6 символов' : null),
+		},
+	})
+
+	const loadSuggestedUsername = useCallback(async () => {
+		setLoadingUsername(true)
+		setError(null)
+		try {
+			const username = await suggestUsername()
+			setGeneratedUsername(username)
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Не удалось сгенерировать логин')
+		} finally {
+			setLoadingUsername(false)
+		}
+	}, [])
+
+	useEffect(() => {
+		if (type === 'register') {
+			loadSuggestedUsername()
+		}
+	}, [type, loadSuggestedUsername])
+
+	if (isAuthenticated) {
+		navigate('/')
+		return null
+	}
+
+	const handleSubmit = async (values: typeof form.values) => {
+		setError(null)
+		setLoading(true)
+
+		try {
+			if (type === 'register') {
+				if (!generatedUsername) {
+					setError('Логин ещё не сгенерирован')
+					return
+				}
+				await register(generatedUsername, values.password)
+			} else {
+				await login(values.username, values.password)
+			}
+			navigate('/')
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Произошла ошибка')
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	const switchMode = () => {
+		toggle()
+		setError(null)
+		form.reset()
+		if (type === 'login') {
+			setGeneratedUsername(null)
+		}
+	}
+
+	return (
+		<Paper radius='md' p='lg' withBorder maw={480} mx='auto' {...props}>
+			<Text size='lg' fw={500} c='bright' mb='md'>
+				{type === 'register' ? 'Регистрация' : 'Вход в аккаунт'}
+			</Text>
+
+			{error && (
+				<Alert icon={<IconInfoCircle size={16} />} color='red' variant='light' mb='md'>
+					{error}
+				</Alert>
+			)}
+
+			<form onSubmit={form.onSubmit(handleSubmit)}>
+				<Stack>
+					{type === 'register' ? (
+						<Input.Wrapper
+							label='Логин'
+							description='Создаётся автоматически и не может быть изменён'
+						>
+							<Box
+								px='sm'
+								h={36}
+								style={{
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'space-between',
+									border: '1px solid var(--mantine-color-default-border)',
+									borderRadius: 'var(--mantine-radius-md)',
+									backgroundColor: 'var(--mantine-color-default-hover)',
+									userSelect: 'all',
+								}}
+							>
+								<Text ff='monospace' fw={500} size='sm' c={loadingUsername ? 'dimmed' : undefined}>
+									{loadingUsername ? 'Генерация логина...' : generatedUsername}
+								</Text>
+								{generatedUsername && (
+									<CopyButton value={generatedUsername} timeout={2000}>
+										{({ copied, copy }) => (
+											<Tooltip label={copied ? 'Скопировано' : 'Скопировать логин'} withArrow>
+												<ActionIcon
+													variant='subtle'
+													color={copied ? 'teal' : 'gray'}
+													onClick={copy}
+													aria-label='Скопировать логин'
+												>
+													{copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+												</ActionIcon>
+											</Tooltip>
+										)}
+									</CopyButton>
+								)}
+							</Box>
+						</Input.Wrapper>
+					) : (
+						<TextInput
+							required
+							label='Логин'
+							placeholder='user_abc12345'
+							value={form.values.username}
+							onChange={event => form.setFieldValue('username', event.currentTarget.value)}
+							error={form.errors.username}
+							radius='md'
+						/>
+					)}
+
+					<PasswordInput
+						required
+						label='Пароль'
+						placeholder='Пароль'
+						value={form.values.password}
+						onChange={event => form.setFieldValue('password', event.currentTarget.value)}
+						error={form.errors.password && 'Пароль должен содержать не менее 6 символов'}
+						radius='md'
+					/>
+				</Stack>
+
+				<Group justify='space-between' mt='xl'>
+					<Anchor
+						component='button'
+						type='button'
+						c='bright'
+						opacity={0.85}
+						onClick={switchMode}
+						size='xs'
+					>
+						{type === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+					</Anchor>
+					<Button
+						type='submit'
+						radius='xl'
+						loading={loading || (type === 'register' && loadingUsername)}
+						disabled={type === 'register' && !generatedUsername}
+					>
+						{upperFirst(type === 'register' ? 'Регистрация' : 'Войти')}
+					</Button>
+				</Group>
+			</form>
+		</Paper>
+	)
 }
-                    <UnstyledButton component="label" className={classes.button}>
-                        <Checkbox
-                            checked={value}
-                            onChange={(event) => onChange(event.currentTarget.checked)}
-                            size="md"
-                            mr="xl"
-                            styles={{ input: { cursor: 'pointer' } }}
-                        />
-
-                        <div>
-                            <Text size="xs" c="dimmed" ta="center">
-                                Нажимая на кнопку, вы даете согласие на обработку ваших{' '}
-                                <Anchor href="/privacy" target="_blank" inherit underline="always">
-                                персональных данных
-                                </Anchor>
-                            </Text>
-                        </div>
-                        </UnstyledButton>
-
-                    
-                </Group>
-                </form>
-            </Paper>
-        </AppLayout>
-        );
-  }
