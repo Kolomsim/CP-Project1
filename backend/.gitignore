@@ -44,11 +44,13 @@ coverage.xml
 *.py,cover
 .hypothesis/
 
+
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .gigacode/plans
 .gigacode
+.dockerignore
 
 page_debug.html
 test_parser.py
