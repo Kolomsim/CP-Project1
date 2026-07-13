@@ -31,6 +31,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False, default="user")  # "user" | "author"
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
     # Relationships

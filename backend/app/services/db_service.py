@@ -23,6 +23,7 @@ async def create_user(
     email: str,
     hashed_password: str,
     name: str,
+    role: str = "user",
 ) -> User:
     """Create a new user in the database."""
     user = User(
@@ -30,6 +31,7 @@ async def create_user(
         email=email,
         hashed_password=hashed_password,
         name=name,
+        role=role,
         created_at=datetime.now(timezone.utc),
     )
     db.add(user)
@@ -85,6 +87,37 @@ async def get_user_properties(db: AsyncSession, user_id: str) -> list[SavedPrope
         .order_by(SavedProperty.created_at.desc())
     )
     return list(result.scalars().all())
+
+
+async def get_property_by_url(db: AsyncSession, user_id: str, url: str) -> Optional[SavedProperty]:
+    """Find a saved property by URL for a specific user.
+
+    Использует PostgreSQL JSONB-оператор -> для поиска по вложенному полю
+    property_data -> property -> url.
+    """
+    from sqlalchemy import text
+
+    result = await db.execute(
+        text(
+            "SELECT * FROM saved_properties "
+            "WHERE user_id = :user_id "
+            "AND property_data #>> '{property,url}' = :url "
+            "ORDER BY created_at DESC LIMIT 1"
+        ),
+        {"user_id": user_id, "url": url},
+    )
+    row = result.mappings().first()
+    if row is None:
+        return None
+
+    # Восстанавливаем объект SavedProperty из строки результата
+    return SavedProperty(
+        id=row["id"],
+        user_id=row["user_id"],
+        title=row["title"],
+        property_data=row["property_data"],
+        created_at=row["created_at"],
+    )
 
 
 async def get_property_by_id(db: AsyncSession, property_id: str, user_id: str) -> Optional[SavedProperty]:

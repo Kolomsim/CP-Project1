@@ -14,6 +14,7 @@ from app.services.db_service import (
     get_user_properties,
     get_property_by_id,
     delete_property,
+    get_property_by_url,
 )
 
 router = APIRouter(prefix="/api/properties", tags=["Properties"])
@@ -61,7 +62,26 @@ async def create_property(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Сохранить объект недвижимости."""
+    """Сохранить объект недвижимости.
+
+    Если объект с таким же URL уже сохранён, возвращает существующий
+    (не создаёт дубликат).
+    """
+    # Извлекаем URL объекта из property_data
+    property_data = body.property_data
+    property_obj = property_data.get("property", {})
+    url = property_obj.get("url", "") if isinstance(property_obj, dict) else ""
+
+    if url:
+        existing = await get_property_by_url(db, user_id, url)
+        if existing is not None:
+            return PropertyItemResponse(
+                id=existing.id,
+                title=existing.title,
+                property_data=existing.property_data,
+                created_at=existing.created_at.isoformat(),
+            )
+
     prop = await save_property(db, user_id, body.title, body.property_data)
     return PropertyItemResponse(
         id=prop.id,

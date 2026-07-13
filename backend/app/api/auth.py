@@ -78,6 +78,7 @@ async def register(body: UserRegisterRequest, db: AsyncSession = Depends(get_db)
             id=user.id,
             email=user.email,
             name=user.name,
+            role=user.role,
             created_at=user.created_at,
         ),
     )
@@ -101,6 +102,7 @@ async def login(body: UserLoginRequest, db: AsyncSession = Depends(get_db)):
             id=user.id,
             email=user.email,
             name=user.name,
+            role=user.role,
             created_at=user.created_at,
         ),
     )
@@ -132,6 +134,7 @@ async def refresh(body: RefreshTokenRequest, db: AsyncSession = Depends(get_db))
             id=user.id,
             email=user.email,
             name=user.name,
+            role=user.role,
             created_at=user.created_at,
         ),
     )
@@ -153,6 +156,7 @@ async def get_me(
         id=user.id,
         email=user.email,
         name=user.name,
+        role=user.role,
         created_at=user.created_at,
     )
 

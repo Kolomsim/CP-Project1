@@ -1,12 +1,9 @@
-/**
- * API-сервис для аутентификации.
- */
-
-import { apiRequest, setTokens, clearTokens } from './api'
+import { apiRequest, setTokens, clearTokens } from './client'
 
 export interface User {
 	id: string
 	name: string
+	role: string
 	created_at: string
 }
 

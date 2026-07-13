@@ -18,6 +18,7 @@ from app.services.db_service import (
     delete_article,
     get_user_by_id,
 )
+from app.database.models import User
 
 router = APIRouter(prefix="/api/articles", tags=["Articles"])
 
@@ -112,13 +113,27 @@ async def get_article(
     )
 
 
+async def _require_author(db: AsyncSession, user_id: str) -> User:
+    """Проверяет, что пользователь имеет роль author."""
+    user = await get_user_by_id(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if user.role != "author":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только авторы могут создавать и редактировать статьи",
+        )
+    return user
+
+
 @router.post("/", response_model=ArticleDetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_article_endpoint(
     body: ArticleCreateRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Создать новую статью (только для авторизованных пользователей)."""
+    """Создать новую статью (только для авторов)."""
+    await _require_author(db, user_id)
     article = await create_article(
         db=db,
         author_id=user_id,
@@ -151,6 +166,7 @@ async def update_article_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     """Обновить статью (только для автора)."""
+    await _require_author(db, user_id)
     kwargs = {k: v for k, v in body.model_dump().items() if v is not None}
     if not kwargs:
         raise HTTPException(status_code=400, detail="Нет полей для обновления")
@@ -184,6 +200,7 @@ async def delete_article_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     """Удалить статью (только для автора)."""
+    await _require_author(db, user_id)
     deleted = await delete_article(db, article_id, user_id)
     if not deleted:
         raise HTTPException(

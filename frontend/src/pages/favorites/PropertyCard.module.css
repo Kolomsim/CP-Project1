@@ -51,3 +51,19 @@
 	width: 100%;
 	color: var(--mantine-color-gray-5);
 }
+
+.propertyIcon {
+	color: var(--mantine-color-blue-6);
+	opacity: 0.7;
+}
+
+.card {
+	transition:
+		box-shadow 0.2s ease,
+		transform 0.2s ease;
+}
+
+.card:hover {
+	box-shadow: var(--mantine-shadow-md);
+	transform: translateY(-2px);
+}
