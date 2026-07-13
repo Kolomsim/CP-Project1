@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Loader, Paper, Stack, Text, Title } from '@mantine/core'
+import { Alert, Button, Loader, Paper, Stack, Text, Title, Tooltip } from '@mantine/core'
 import { IconAlertCircle, IconHeart, IconHeartFilled } from '@tabler/icons-react'
 import { fetchDealCheckResult, savePropertyToFavorites } from '../../../api/deal'
 import { getDealPropertyPreview } from '../../../lib/dealSession'
@@ -10,6 +10,9 @@ import type { DealCheckResult } from './types'
 import { useAuth } from '../../../context/AuthContext'
 import classes from './DealResult.module.css'
 
+const AUTH_SAVE_HINT =
+	'чтобы сохранить в избранное или сравнивать объекты недвижимости между собой - войдите в аккаунт'
+
 export default function DealResultPage() {
 	const { isAuthenticated } = useAuth()
 	const [result, setResult] = useState<DealCheckResult | null>(null)
@@ -18,6 +21,7 @@ export default function DealResultPage() {
 	const [saving, setSaving] = useState(false)
 	const [saved, setSaved] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
+	const [authHintOpened, setAuthHintOpened] = useState(false)
 
 	useEffect(() => {
 		const loadResult = async () => {
@@ -37,6 +41,64 @@ export default function DealResultPage() {
 
 		void loadResult()
 	}, [])
+
+	const handleSave = async () => {
+		if (!isAuthenticated) {
+			setAuthHintOpened(true)
+			return
+		}
+
+		if (!result) return
+
+		setSaving(true)
+		setSaveError(null)
+		try {
+			const ratingLabel =
+				result.overallRating === 'Не рекомендуется' || result.overallRating === 'Обратите внимание'
+					? 'Высокий риск'
+					: result.overallRating === 'Требуется проверка'
+						? 'Средний риск'
+						: 'Низкий риск'
+			const ratingLevel = ratingLabel === 'Высокий риск' ? 'high' : ratingLabel === 'Средний риск' ? 'medium' : 'low'
+
+			const dataToSave = {
+				...result,
+				rating: {
+					score: result.criticalCount > 0 ? 30 : result.riskCount > 0 ? 60 : 90,
+					level: ratingLevel,
+					label: ratingLabel,
+				},
+			}
+
+			await savePropertyToFavorites(result.property.title, dataToSave as unknown as Record<string, unknown>)
+			setSaved(true)
+		} catch (err) {
+			setSaveError(err instanceof Error ? err.message : 'Не удалось сохранить в избранное.')
+		} finally {
+			setSaving(false)
+		}
+	}
+
+	const saveButton = (
+		<Button
+			fullWidth
+			size='md'
+			variant={saved ? 'filled' : 'outline'}
+			color={saved ? 'pink' : 'gray'}
+			loading={saving}
+			disabled={saved}
+			onClick={() => void handleSave()}
+			onMouseEnter={() => {
+				if (!isAuthenticated) setAuthHintOpened(true)
+			}}
+			onMouseLeave={() => {
+				if (!isAuthenticated) setAuthHintOpened(false)
+			}}
+			leftSection={saved ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
+		>
+			{saved ? 'Сохранено в избранном' : 'Сохранить в избранное'}
+		</Button>
+	)
 
 	return (
 		<Stack gap='xl' className={classes.page} maw={760} mx='auto'>
@@ -77,59 +139,26 @@ export default function DealResultPage() {
 					<RiskSummary result={result} />
 					<PropertyPreviewCard property={result.property} />
 
-					{isAuthenticated && (
-						<>
-							{saveError && (
-								<Alert icon={<IconAlertCircle size={16} />} color='red' variant='light' title='Ошибка'>
-									{saveError}
-								</Alert>
-							)}
+					{saveError && (
+						<Alert icon={<IconAlertCircle size={16} />} color='red' variant='light' title='Ошибка'>
+							{saveError}
+						</Alert>
+					)}
 
-							<Button
-								fullWidth
-								size='md'
-								variant={saved ? 'filled' : 'outline'}
-								color={saved ? 'pink' : 'gray'}
-								loading={saving}
-								disabled={saved}
-								onClick={async () => {
-									setSaving(true)
-									setSaveError(null)
-									try {
-										const ratingLabel =
-											result.overallRating === 'Не рекомендуется' || result.overallRating === 'Обратите внимание'
-												? 'Высокий риск'
-												: result.overallRating === 'Требуется проверка'
-													? 'Средний риск'
-													: 'Низкий риск'
-										const ratingLevel =
-											ratingLabel === 'Высокий риск' ? 'high' : ratingLabel === 'Средний риск' ? 'medium' : 'low'
-
-										const dataToSave = {
-											...result,
-											rating: {
-												score: result.criticalCount > 0 ? 30 : result.riskCount > 0 ? 60 : 90,
-												level: ratingLevel,
-												label: ratingLabel,
-											},
-										}
-
-										await savePropertyToFavorites(
-											result.property.title,
-											dataToSave as unknown as Record<string, unknown>,
-										)
-										setSaved(true)
-									} catch (err) {
-										setSaveError(err instanceof Error ? err.message : 'Не удалось сохранить в избранное.')
-									} finally {
-										setSaving(false)
-									}
-								}}
-								leftSection={saved ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
-							>
-								{saved ? 'Сохранено в избранном' : 'Сохранить в избранное'}
-							</Button>
-						</>
+					{isAuthenticated ? (
+						saveButton
+					) : (
+						<Tooltip
+							label={AUTH_SAVE_HINT}
+							opened={authHintOpened}
+							multiline
+							w={300}
+							withArrow
+							position='top'
+							events={{ hover: false, focus: false, touch: false }}
+						>
+							{saveButton}
+						</Tooltip>
 					)}
 				</Stack>
 			)}
