@@ -80,28 +80,28 @@ export function RiskSummary({ result }: RiskSummaryProps) {
 					</Badge>
 				</Group>
 
-				{result.problems.length > 0 && (
-					<Text size='sm' c='dimmed'>
-						Найдено рисков: {result.problems.length}
-					</Text>
-				)}
+        {result.problems.length > 0 && (
+          <Text size="sm" c="dimmed">
+            Найдено рисков: {result.problems.length} /* TODO: убрать 
+          </Text>
+        )}
 
-				{result.problems.length > 0 ? (
-					<Stack gap='sm'>
-						<Text size='sm' fw={500}>
-							В результате проверки выявлены следующие проблемы:
-						</Text>
+        {result.problems.length > 0 ? (
+          <Stack gap="sm">
+            <Text size="sm" fw={500}>
+              В результате проверки выявлены следующие характеристики объекта недвижимости:
+            </Text>
 
-						{result.problems.map((risk, index) => (
-							<RiskItem key={`${risk.type}-${index}`} risk={risk} />
-						))}
-					</Stack>
-				) : (
-					<Text size='sm' c='dimmed'>
-						Критических рисков не обнаружено.
-					</Text>
-				)}
-			</Stack>
-		</Paper>
-	)
+            {result.problems.map((risk, index) => (
+              <RiskItem key={`${risk.type}-${index}`} risk={risk} />
+            ))}
+          </Stack>
+        ) : (
+          <Text size="sm" c="dimmed">
+            Критических особенностей не обнаружено.
+          </Text>
+        )}
+      </Stack>
+    </Paper>
+  )
 }
