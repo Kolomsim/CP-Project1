@@ -18,6 +18,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    
+  redis:
+    image: redis:7-alpine
+    container_name: smartcheck-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    networks:
+      - cp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -36,9 +53,12 @@ services:
       - RELOAD=False
       - DATABASE_URL=postgresql+asyncpg://smartcheck:smartcheck_secret@postgres:5432/smartcheck
       - JWT_SECRET_KEY=smartcheck-jwt-secret-key-change-in-production-2026
+      - REDIS_URL=redis://redis:6379/0
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - cp-network
@@ -62,3 +82,4 @@ networks:
 
 volumes:
   pgdata:
+  redis_data:

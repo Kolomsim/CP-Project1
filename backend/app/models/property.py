@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional
-from models.common import PropertyType, DealType
+from typing import Optional, List
+from .common import PropertyType, DealType
 
 # Запрос = ссылка на объект недвижимости
 class PropertyInfoRequest(BaseModel):
@@ -52,3 +52,20 @@ class PropertyPreviewResponse(BaseModel):
     # Дополнительно
     description: Optional[str] = Field(None, description="Описание объекта")
     is_verified: bool = Field(False, description="Проверен ли объект")
+
+class NearbyPlace(BaseModel):
+    name: str
+    address: str
+    category: str          # "хороший" или "плохой"
+    type: str
+    distance_meters: float
+    lat: float
+    lon: float
+
+class NearbyResponse(BaseModel):
+    good: List[NearbyPlace]
+    bad: List[NearbyPlace]
+    total_good: int
+    total_bad: int
+    radius_used: int
+    cached: bool

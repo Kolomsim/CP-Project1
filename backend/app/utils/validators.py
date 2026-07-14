@@ -4,8 +4,7 @@ import phonenumbers
 
 
 SUPPORTED_PLATFORMS = {
-    "cian": "ЦИАН",
-    "domclick": "Домклик"
+    "cian": "ЦИАН"
 }
 
 def _normalize_url(url: str) -> str:

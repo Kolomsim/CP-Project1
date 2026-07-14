@@ -42,9 +42,13 @@ class Config:
     ROSREESTR_TIMEOUT: int = int(os.getenv("ROSREESTR_TIMEOUT", 15))
 
     # Кэширование
-    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", 3600))  # 1 час
     USE_REDIS: bool = os.getenv("USE_REDIS", "False").lower() == "true"
-    REDIS_URL: Optional[str] = os.getenv("REDIS_URL", None)
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+    DGIS_API_KEY: str = os.getenv("DGIS_API_KEY", "")
+    DGIS_SEARCH_URL: str = os.getenv("DGIS_SEARCH_URL", "https://catalog.api.2gis.com/3.0/items")
+    DEFAULT_SEARCH_RADIUS: int = int(os.getenv("DEFAULT_SEARCH_RADIUS", 1000))
+    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", 86400))
 
     # Флаг использования моков (для разработки, но в проде = False)
     USE_MOCK_EXTERNAL_API: bool = os.getenv("USE_MOCK_EXTERNAL_API", "False").lower() == "true"

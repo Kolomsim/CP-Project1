@@ -55,3 +55,5 @@ coverage.xml
 page_debug.html
 test_parser.py
 flat_data.json
+.DS_Store
+ideas.txt

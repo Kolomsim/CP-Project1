@@ -24,4 +24,4 @@ tenacity==8.2.3
 curl-cffi==0.7.3
 phonenumbers==8.13.49
 
-cianparser==1.0.4
+redis==5.0.1
