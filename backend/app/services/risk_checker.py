@@ -253,17 +253,6 @@ def _check_property_risks(property_data: Dict[str, Any]) -> List[Dict[str, Any]]
             "article_link": "/kb",
         })
 
-    seller_name = str(property_data.get("seller", {}).get("name", ""))
-    if seller_name in ("", "Неизвестно"):
-        risks.append({
-            "type": "unknown_seller",
-            "severity": RiskLevel.LOW,
-            "title": "Данные продавца не определены",
-            "description": "Не удалось получить информацию о продавце из объявления.",
-            "recommendation": "Запросите у продавца паспортные данные и документы, подтверждающие право собственности.",
-            "article_link": "/kb",
-        })
-
     return risks
 
 

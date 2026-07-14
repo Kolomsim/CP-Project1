@@ -1,5 +1,5 @@
 import { Box, type BoxProps, Text } from '@mantine/core'
-import { buildYandexMapEmbedUrl } from '../lib/map'
+import { TwoGisMap } from './TwoGisMap'
 
 type PropertyMapProps = BoxProps & {
 	lat?: number
@@ -10,8 +10,6 @@ type PropertyMapProps = BoxProps & {
 }
 
 export function PropertyMap({ lat, lon, address, title, height = 280, ...boxProps }: PropertyMapProps) {
-	const mapSrc = buildYandexMapEmbedUrl({ lat, lon, address })
-
 	return (
 		<Box {...boxProps}>
 			{title && (
@@ -27,14 +25,12 @@ export function PropertyMap({ lat, lon, address, title, height = 280, ...boxProp
 					height,
 				}}
 			>
-				<iframe
-					title={`Карта: ${address}`}
-					src={mapSrc}
-					width='100%'
-					height='100%'
-					loading='lazy'
-					referrerPolicy='no-referrer-when-downgrade'
-					style={{ border: 'none' }}
+				<TwoGisMap
+					lat={lat ?? 0}
+					lon={lon ?? 0}
+					address={address}
+					title={title ?? address}
+					height={height}
 				/>
 			</Box>
 		</Box>

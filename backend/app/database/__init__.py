@@ -65,12 +65,25 @@ async def _seed_default_author(db: AsyncSession):
     logger.info("Default author created (login: author, password: 123456)")
 
 
+async def _ensure_schema(conn):
+    """Apply lightweight schema patches create_all does not handle (new columns)."""
+    from sqlalchemy import text
+
+    await conn.execute(
+        text(
+            "ALTER TABLE users "
+            "ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user'"
+        )
+    )
+
+
 async def init_db():
     """Create all tables on startup and seed default data."""
     from app.database.models import Base
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _ensure_schema(conn)
     logger.info("Database tables created/verified")
 
     # Создаём дефолтного автора в отдельной сессии

@@ -6,9 +6,6 @@ type PropertyMapProps = {
 	lat: number
 	lon: number
 	address: string
-	lat: number
-	lon: number
-	address: string
 }
 
 export function PropertyMap({ lat, lon, address }: PropertyMapProps) {

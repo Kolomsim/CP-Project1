@@ -80,13 +80,7 @@ export function RiskSummary({ result }: RiskSummaryProps) {
 					</Badge>
 				</Group>
 
-        {result.problems.length > 0 && (
-          <Text size="sm" c="dimmed">
-            Найдено рисков: {result.problems.length} /* TODO: убрать 
-          </Text>
-        )}
-
-        {result.problems.length > 0 ? (
+				{result.problems.length > 0 ? (
           <Stack gap="sm">
             <Text size="sm" fw={500}>
               В результате проверки выявлены следующие характеристики объекта недвижимости:
@@ -105,3 +99,4 @@ export function RiskSummary({ result }: RiskSummaryProps) {
     </Paper>
   )
 }
+  
