@@ -1,4 +1,4 @@
-import { Paper, Stack, Text, Container, Box, Group } from '@mantine/core'
+import { Paper, Text, Container, Box, Group } from '@mantine/core'
 import { IconShieldCheck, IconFileCheck, IconBooks } from '@tabler/icons-react'
 import classes from './KeyFeatures.module.css'
 

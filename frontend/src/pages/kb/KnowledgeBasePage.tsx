@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router'
 import { Button, Group, Loader, SimpleGrid, Stack, Text, TextInput, Title } from '@mantine/core'
 import { IconPlus, IconSearch } from '@tabler/icons-react'
@@ -12,14 +12,29 @@ export default function KbPage() {
 	const [articles, setArticles] = useState<ArticleItem[]>([])
 	const [loading, setLoading] = useState(true)
 
-	useEffect(() => {
-		fetchArticles(10, 0)
+	const loadArticles = useCallback((searchQuery?: string) => {
+		setLoading(true)
+		fetchArticles(10, 0, searchQuery || undefined)
 			.then(data => setArticles(data))
 			.catch(() => {
 				// Если API недоступен, показываем пустой список
 			})
 			.finally(() => setLoading(false))
 	}, [])
+
+	useEffect(() => {
+		loadArticles()
+	}, [loadArticles])
+
+	const handleSearch = () => {
+		loadArticles(query.trim() || undefined)
+	}
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter') {
+			handleSearch()
+		}
+	}
 
 	const isAuthor = user?.role === 'author'
 
@@ -32,9 +47,12 @@ export default function KbPage() {
 					placeholder='Поиск по статьям...'
 					value={query}
 					onChange={event => setQuery(event.currentTarget.value)}
+					onKeyDown={handleKeyDown}
 					leftSection={<IconSearch size={18} stroke={1.5} />}
 				/>
-				<Button size='md'>Найти</Button>
+				<Button size='md' onClick={handleSearch}>
+					Найти
+				</Button>
 				{isAuthor && (
 					<Button component={Link} to='/kb/new' variant='filled' size='md' leftSection={<IconPlus size={18} />}>
 						Создать статью
@@ -57,7 +75,7 @@ export default function KbPage() {
 					</SimpleGrid>
 				) : (
 					<Text c='dimmed' size='sm'>
-						Статьи пока не добавлены
+						{query ? 'Ничего не найдено. Попробуйте изменить запрос.' : 'Статьи пока не добавлены'}
 					</Text>
 				)}
 			</Stack>

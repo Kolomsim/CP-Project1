@@ -5,8 +5,9 @@ SQLAlchemy ORM models for the database.
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Text, DateTime, Boolean, ForeignKey, JSON, Integer
+    Column, String, Text, DateTime, Boolean, ForeignKey, JSON, Integer, Index
 )
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -65,8 +66,13 @@ class Article(Base):
     preview = Column(Text, nullable=True)
     content = Column(Text, nullable=False)
     category = Column(String(100), nullable=True)
+    search_vector = Column(TSVECTOR, nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
 
     # Relationships
     author = relationship("User", back_populates="articles")
+
+    __table_args__ = (
+        Index('ix_articles_search_vector', 'search_vector', postgresql_using='gin'),
+    )

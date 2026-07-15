@@ -17,6 +17,7 @@ from app.services.db_service import (
     update_article,
     delete_article,
     get_user_by_id,
+    search_articles,
 )
 from app.database.models import User
 
@@ -60,10 +61,18 @@ class ArticleUpdateRequest(BaseModel):
 async def list_articles(
     limit: int = Query(10, ge=1, le=50),
     offset: int = Query(0, ge=0),
+    search: Optional[str] = Query(None, description="Полнотекстовый поиск по статьям с учётом русской морфологии"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Возвращает список статей с информацией об авторе."""
-    articles = await get_articles(db, limit=limit, offset=offset)
+    """Возвращает список статей с информацией об авторе.
+
+    Если передан параметр search, выполняется полнотекстовый поиск
+    с использованием PostgreSQL tsvector/tsquery и лемматизации pymorphy2.
+    """
+    if search and search.strip():
+        articles = await search_articles(db, query=search.strip(), limit=limit, offset=offset)
+    else:
+        articles = await get_articles(db, limit=limit, offset=offset)
     result = []
     for article in articles:
         author = None

@@ -76,6 +76,55 @@ async def _ensure_schema(conn):
         )
     )
 
+    # Полнотекстовый поиск по статьям
+    await conn.execute(
+        text(
+            "ALTER TABLE articles "
+            "ADD COLUMN IF NOT EXISTS search_vector tsvector"
+        )
+    )
+    await conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_articles_search_vector "
+            "ON articles USING GIN(search_vector)"
+        )
+    )
+    await conn.execute(
+        text(
+            "CREATE OR REPLACE FUNCTION articles_search_vector_update() "
+            "RETURNS trigger AS $$ "
+            "BEGIN "
+            "    NEW.search_vector := to_tsvector("
+            "        'russian',"
+            "        coalesce(NEW.title, '') || ' ' || coalesce(NEW.content, '')"
+            "    ); "
+            "    RETURN NEW; "
+            "END; "
+            "$$ LANGUAGE plpgsql"
+        )
+    )
+    await conn.execute(
+        text(
+            "DROP TRIGGER IF EXISTS trg_articles_search_vector ON articles"
+        )
+    )
+    await conn.execute(
+        text(
+            "CREATE TRIGGER trg_articles_search_vector "
+            "BEFORE INSERT OR UPDATE ON articles "
+            "FOR EACH ROW "
+            "EXECUTE FUNCTION articles_search_vector_update()"
+        )
+    )
+    # Индексируем существующие статьи (если ещё не проиндексированы)
+    await conn.execute(
+        text(
+            "UPDATE articles "
+            "SET search_vector = to_tsvector('russian', coalesce(title, '') || ' ' || coalesce(content, '')) "
+            "WHERE search_vector IS NULL"
+        )
+    )
+
 
 async def init_db():
     """Create all tables on startup and seed default data."""

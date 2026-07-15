@@ -7,13 +7,31 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import User, SavedProperty, Article
 from app.config import config
 
 logger = logging.getLogger(__name__)
+
+import pymorphy3
+_morph = pymorphy3.MorphAnalyzer()
+
+
+def _lemmatize_query(text: str) -> str:
+    """Лемматизация поискового запроса: 'покупки квартир' → 'покупка квартира'
+
+    Приводит каждое слово к нормальной форме (именительный падеж, ед. число),
+    чтобы PostgreSQL tsquery мог сопоставить с tsvector статей.
+    """
+    words = text.strip().split()
+    lemmas = []
+    for word in words:
+        parsed = _morph.parse(word)[0]
+        if parsed.normal_form:
+            lemmas.append(parsed.normal_form)
+    return ' '.join(lemmas)
 
 
 # ─── User operations ────────────────────────────────────────────────────────
@@ -144,6 +162,36 @@ async def delete_property(db: AsyncSession, property_id: str, user_id: str) -> b
 
 
 # ─── Article operations ─────────────────────────────────────────────────────
+
+
+async def search_articles(
+    db: AsyncSession,
+    query: str,
+    limit: int = 10,
+    offset: int = 0,
+) -> list[Article]:
+    """Полнотекстовый поиск по статьям с русской морфологией.
+
+    Использует PostgreSQL tsvector/tsquery с русским словарём.
+    Запрос предварительно лемматизируется через pymorphy2 для учёта падежей.
+    Результаты сортируются по релевантности (ts_rank).
+    """
+    lemmatized = _lemmatize_query(query)
+    if not lemmatized:
+        return []
+
+    # Используем ORM select с полнотекстовым поиском через text()
+    from sqlalchemy import func, desc
+    ts_query = func.plainto_tsquery('russian', lemmatized)
+    stmt = (
+        select(Article)
+        .where(Article.search_vector.op('@@')(ts_query))
+        .order_by(desc(func.ts_rank(Article.search_vector, ts_query)))
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 async def create_article(
     db: AsyncSession,

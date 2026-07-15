@@ -33,8 +33,10 @@ export type ArticleUpdatePayload = {
 	category?: string
 }
 
-export function fetchArticles(limit = 10, offset = 0): Promise<ArticleItem[]> {
-	return apiRequest<ArticleItem[]>(`/articles/?limit=${limit}&offset=${offset}`)
+export function fetchArticles(limit = 10, offset = 0, search?: string): Promise<ArticleItem[]> {
+	const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+	if (search) params.set('search', search)
+	return apiRequest<ArticleItem[]>(`/articles/?${params}`)
 }
 
 export function fetchArticleById(id: string): Promise<ArticleDetail> {
