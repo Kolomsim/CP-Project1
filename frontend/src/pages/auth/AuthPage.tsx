@@ -81,8 +81,19 @@ export default function AuthPage() {
 
 	return (
 		<Center style={{ minHeight: '100%' }}>
-			<Paper radius='md' p='lg' withBorder maw={480} w='100%'>
-				<Text size='lg' fw={500} c='bright' mb='md'>
+			<Paper
+				radius='md'
+				p='lg'
+				withBorder
+				maw={480}
+				w='100%'
+				style={{
+					borderColor: 'var(--sc-border-strong)',
+					background: 'var(--sc-surface)',
+					boxShadow: 'var(--sc-shadow)',
+				}}
+			>
+				<Text size='lg' fw={700} mb='md' c='var(--sc-ink)'>
 					{type === 'register' ? 'Регистрация' : 'Вход в аккаунт'}
 				</Text>
 
@@ -104,7 +115,7 @@ export default function AuthPage() {
 					/>
 				)}
 
-				<Anchor component='button' type='button' c='bright' opacity={0.85} onClick={switchMode} size='xs' mt='md'>
+				<Anchor component='button' type='button' c='brand.7' opacity={0.9} onClick={switchMode} size='xs' mt='md'>
 					{type === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
 				</Anchor>
 			</Paper>

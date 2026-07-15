@@ -14,7 +14,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
 				<Stack gap='sm'>
 					<Group gap='xs'>
 						{article.category && (
-							<Badge variant='light' color='blue' size='sm'>
+							<Badge variant='light' color='brand' size='sm'>
 								{article.category}
 							</Badge>
 						)}

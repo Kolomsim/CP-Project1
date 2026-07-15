@@ -75,7 +75,7 @@
 .comparisonWinner {
 	font-size: var(--mantine-font-size-sm);
 	font-weight: 700;
-	color: var(--mantine-color-green-7);
+	color: var(--mantine-color-brand-7);
 }
 
 .comparisonLoser {
@@ -103,12 +103,12 @@
 }
 
 .ratingLow {
-	background: #ebfbee;
-	color: #2b8a3e;
+	background: #e2f1d1;
+	color: #247a4f;
 }
 
 .ratingLow .ratingDot {
-	background: #2b8a3e;
+	background: #2f9e66;
 }
 
 .ratingMedium {

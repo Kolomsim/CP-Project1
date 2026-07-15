@@ -37,7 +37,7 @@ export default function DealResultPage() {
 			{loading && (
 				<Paper withBorder radius='md' p='xl'>
 					<Stack align='center' gap='sm'>
-						<Loader color='violet' size='md' />
+						<Loader color='brand' size='md' />
 						<Text size='sm' c='dimmed'>
 							Проверяем особенности сделки...
 						</Text>

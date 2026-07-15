@@ -139,7 +139,7 @@ export default function ComparisonPage() {
 
 			{loading && (
 				<Stack align='center' py='xl'>
-					<Loader color='violet' size='md' />
+					<Loader color='brand' size='md' />
 					<Text size='sm' c='dimmed'>
 						Загрузка избранного...
 					</Text>

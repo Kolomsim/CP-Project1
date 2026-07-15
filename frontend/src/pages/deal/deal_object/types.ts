@@ -12,6 +12,7 @@ export type PropertyPreview = {
   totalFloors: number
   rooms: number
   propertyType: string
+  marketCategory: string
   dealType: string
   description: string
   seller: {

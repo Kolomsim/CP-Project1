@@ -14,6 +14,7 @@ export const DEMO_PROPERTY: PropertyPreview = {
   totalFloors: 10,
   rooms: 1,
   propertyType: 'квартира',
+  marketCategory: 'вторичка',
   dealType: 'свободная продажа',
   description:
     'Уютная однокомнатная квартира в тихом районе. Рядом метро, школы и парк. Квартира в хорошем состоянии, готова к заселению.',

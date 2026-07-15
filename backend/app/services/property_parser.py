@@ -16,6 +16,57 @@ class ParserError(Exception):
     pass
 
 
+def _extract_property_old_from_offer(offer_data: Dict[str, Any]) -> Optional[str]:
+    """Достаёт «Тип жилья» (вторичка/новостройка) из структуры оффера CIAN."""
+    candidates: list[Any] = []
+
+    for key in ('facts', 'factoids', 'features', 'generalInfo', 'aboutHome', 'objectInfo'):
+        value = offer_data.get(key)
+        if isinstance(value, list):
+            candidates.extend(value)
+        elif isinstance(value, dict):
+            candidates.append(value)
+
+    extra = offer_data.get('extraData') or {}
+    if isinstance(extra, dict):
+        for key in ('facts', 'factoids', 'features'):
+            value = extra.get(key)
+            if isinstance(value, list):
+                candidates.extend(value)
+
+    for item in candidates:
+        if not isinstance(item, dict):
+            continue
+        label = str(
+            item.get('label')
+            or item.get('name')
+            or item.get('title')
+            or item.get('key')
+            or ''
+        ).lower()
+        if 'тип жилья' not in label and label not in ('flattype', 'propertytype', 'housetype'):
+            continue
+        value = item.get('value') or item.get('text') or item.get('title')
+        if value:
+            return str(value).strip()
+
+    # Иногда CIAN кладёт категории в breadcrumbs / category path
+    for key in ('breadCrumbs', 'breadcrumbs', 'category'):
+        crumbs = offer_data.get(key)
+        text = ''
+        if isinstance(crumbs, list):
+            text = ' '.join(str(c.get('title') or c.get('name') or c) for c in crumbs if c)
+        elif isinstance(crumbs, str):
+            text = crumbs
+        lower = text.lower()
+        if 'новостр' in lower or 'первич' in lower:
+            return 'Новостройка'
+        if 'втор' in lower:
+            return 'Вторичка'
+
+    return None
+
+
 class CianListingParser:
     """Парсер для отдельных объявлений ЦИАН"""
 
@@ -136,6 +187,11 @@ class CianListingParser:
             building = offer_data.get('building', {})
             if building:
                 data['total_floors'] = building.get('floorsTotal', 0) or 0
+
+            # Тип жилья (вторичка/новостройка) из фактов оффера
+            property_old = _extract_property_old_from_offer(offer_data)
+            if property_old:
+                data['property_old'] = property_old
             
             # Описание
             if not data.get('description'):
@@ -258,6 +314,25 @@ class CianListingParser:
                     data['location'] = {}
                 data['location']['address'] = address
 
+        # Тип жилья: вторичка / новостройка (поле CIAN "Тип жилья")
+        # Важно: матчим только внутри одного JSON-объекта, иначе value
+        # подтягивается от соседнего факта («Общая площадь» и т.п.).
+        property_old = None
+        for pattern in (
+            r'\{\s*"value"\s*:\s*"([^"]+)"\s*,\s*"label"\s*:\s*"Тип жилья"\s*\}',
+            r'\{\s*"label"\s*:\s*"Тип жилья"\s*,\s*"value"\s*:\s*"([^"]+)"\s*\}',
+            r'"value"\s*:\s*"(Новостройка|Вторичка|Первичный рынок|Вторичный рынок)"\s*,\s*"label"\s*:\s*"Тип жилья"',
+            r'"label"\s*:\s*"Тип жилья"\s*,\s*"value"\s*:\s*"(Новостройка|Вторичка|Первичный рынок|Вторичный рынок)"',
+        ):
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                candidate = match.group(1).strip()
+                if _map_market_category(candidate):
+                    property_old = candidate
+                    break
+
+        data['property_old'] = property_old or 'неизвестно'
+
         return data
 
     def _merge_cian_config_data(self, data: Dict[str, Any], cian_data: Dict[str, Any]) -> None:
@@ -279,6 +354,11 @@ class CianListingParser:
 
         if not data.get('address') and cian_data.get('address'):
             data['address'] = cian_data['address']
+
+        if cian_data.get('property_old') and (
+            not data.get('property_old') or data.get('property_old') == 'неизвестно'
+        ):
+            data['property_old'] = cian_data['property_old']
     
     def _extract_from_json_ld(self, soup: BeautifulSoup) -> Dict[str, Any]:
         """Извлекает данные из JSON-LD разметки (Product)"""
@@ -611,6 +691,8 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
         "address": location.get("address") or flat_data.get("address", ""),
     }
 
+    property_old, market_category = _resolve_market_category(flat_data, url)
+
     return {
         "id": obj_id,
         "platform": "ЦИАН",
@@ -629,6 +711,8 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
         "seller": seller,
         "location": normalized_location,
         "description": flat_data.get("description", ""),
+        "property_old": property_old,
+        "market_category": market_category,
         "is_verified": False,
     }
 
@@ -649,6 +733,62 @@ def _map_deal_type_from_url(url: str) -> str:
     if '/sale/' in url_lower or '/prodazha/' in url_lower:
         return "free_sale"
     return "unknown"
+
+
+def _map_market_category(property_old: Optional[str]) -> str:
+    """Нормализует CIAN «Тип жилья» (property_old) в новостройка/вторичка."""
+    if not property_old:
+        return ""
+
+    value = property_old.strip().lower().replace("\xa0", " ")
+    if value in ("неизвестно", "unknown", ""):
+        return ""
+    # Отсекаем ложные матчи вроде «40,6 м²»
+    if any(token in value for token in ("м²", "м2", "₽", "руб", "%")):
+        return ""
+    if re.search(r"\d", value) and "новостр" not in value and "втор" not in value and "первич" not in value:
+        return ""
+    if "новостр" in value or "первич" in value:
+        return "новостройка"
+    if "втор" in value:
+        return "вторичка"
+    return ""
+
+
+def _resolve_market_category(flat_data: Dict[str, Any], url: str = "") -> tuple[str, str]:
+    """Возвращает (property_old, market_category) с эвристиками по данным объявления."""
+    property_old = flat_data.get("property_old") or ""
+    market_category = _map_market_category(property_old)
+    if market_category:
+        return property_old or market_category, market_category
+
+    seller = flat_data.get("seller") or {}
+    seller_type = str(seller.get("type") or "").lower()
+    company = str(seller.get("company_name") or "").lower()
+    searchable = " ".join(
+        [
+            str(flat_data.get("title") or ""),
+            str(flat_data.get("description") or ""),
+            str(seller.get("name") or ""),
+            company,
+            url or str(flat_data.get("url") or ""),
+        ]
+    ).lower()
+
+    if (
+        seller_type == "developer"
+        or "застройщик" in searchable
+        or "новострой" in searchable
+        or "жк " in searchable
+        or "жилой комплекс" in searchable
+        or any(token in searchable for token in ("/newbuilding", "/newobjects", "/jk/", "novostroy"))
+    ):
+        return "Новостройка", "новостройка"
+
+    if "втор" in searchable and "рынок" in searchable:
+        return "Вторичка", "вторичка"
+
+    return property_old or "неизвестно", ""
 
 
 # Главная функция
@@ -690,6 +830,7 @@ def parse_property_url(url: str) -> Optional[Dict[str, Any]]:
 def _get_mock_property_data(platform: str, obj_id: str, url: str) -> Dict[str, Any]:
     """Возвращает тестовые данные"""
     import random
+    property_old = random.choice(["Вторичка", "Новостройка"])
     return {
         "id": obj_id,
         "platform": platform,
@@ -718,5 +859,8 @@ def _get_mock_property_data(platform: str, obj_id: str, url: str) -> Dict[str, A
             "address": f"г. Москва, ул. Ленина, д. {random.randint(1, 50)}"
         },
         "description": "Отличная квартира в центре города.",
+        "property_old": property_old,
+        "market_category": _map_market_category(property_old),
         "is_verified": False,
     }
+

@@ -4,9 +4,12 @@
 }
 
 .riskSection {
-  background: var(--mantine-color-gray-1);
+  background: var(--sc-surface);
+  border-color: var(--sc-border-strong) !important;
+  box-shadow: var(--sc-shadow);
 }
 
 .riskItem {
-  background: var(--mantine-color-white);
+  background: var(--sc-page);
+  border-color: var(--sc-border) !important;
 }

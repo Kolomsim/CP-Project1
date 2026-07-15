@@ -63,7 +63,7 @@ export function ComparisonCard({ property, rating, side, comparisons }: Comparis
 				<Text fw={700} size='lg'>
 					{property.title}
 				</Text>
-				<Text fw={700} size='xl' c='violet'>
+				<Text fw={700} size='xl' c='brand'>
 					{formatPrice(property.price)} ₽
 				</Text>
 				<Text size='sm' c='dimmed'>

@@ -10,11 +10,6 @@ const citizenshipData = [
 	{ value: 'foreign', label: 'Иностранное гражданство' },
 ]
 
-const typeOfPropertyData = [
-	{ value: 'primary_market', label: 'Первичный рынок' },
-	{ value: 'secondary_market', label: 'Вторичный рынок' },
-]
-
 const purchaseMethodData = [
 	{ value: 'full_payment', label: '100% оплата (собственные средства)' },
 	{ value: 'mortgage', label: 'Ипотека' },
@@ -43,14 +38,12 @@ const containedInputStyles = {
 export default function DealFormPage() {
 	const navigate = useNavigate()
 	const [citizenship, setCitizenship] = useState<string | null>(null)
-	const [typeOfProperty, setTypeOfProperty] = useState<string | null>(null)
 	const [purchaseMethod, setPurchaseMethod] = useState<string | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
 	const missingFields = [
 		!citizenship && 'гражданство',
-		!typeOfProperty && 'тип недвижимости',
 		!purchaseMethod && 'способ покупки',
 	].filter(Boolean) as string[]
 
@@ -67,7 +60,6 @@ export default function DealFormPage() {
 			clearDealSession()
 			const sessionId = await saveBuyerInfo({
 				citizenship: citizenship!,
-				typeOfProperty: typeOfProperty!,
 				purchaseMethod: purchaseMethod!,
 			})
 			setDealSessionId(sessionId)
@@ -98,15 +90,6 @@ export default function DealFormPage() {
 						data={citizenshipData}
 						value={citizenship}
 						onChange={value => setCitizenship(value)}
-						styles={containedInputStyles}
-					/>
-
-					<Select
-						label='Тип недвижимости'
-						placeholder='Выберите тип недвижимости'
-						data={typeOfPropertyData}
-						value={typeOfProperty}
-						onChange={value => setTypeOfProperty(value)}
 						styles={containedInputStyles}
 					/>
 

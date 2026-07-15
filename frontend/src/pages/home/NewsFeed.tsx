@@ -18,7 +18,7 @@ export function NewsFeed({ items, title = 'Недавние статьи', pageS
 		<Stack gap='md'>
 			<Title order={2}>{title}</Title>
 
-			<Card withBorder padding='lg'>
+			<Card withBorder padding='lg' style={{ borderColor: 'var(--sc-border-strong)', background: 'var(--sc-surface)', boxShadow: 'var(--sc-shadow)' }}>
 				<Stack gap='lg'>
 					{loading ? (
 						<Group justify='center' py='lg'>
