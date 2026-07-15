@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { Alert, Button, Container, Paper, Select, Stack, Title } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { saveBuyerInfo } from '../../../api/deal'
-import { clearDealSession, setDealSessionId } from '../../../lib/dealSession'
+import { clearDealSession, saveDealBuyerCitizenship, setDealSessionId } from '../../../lib/dealSession'
 
 const citizenshipData = [
 	{ value: 'russian', label: 'Российская Федерация' },
@@ -14,7 +14,6 @@ const purchaseMethodData = [
 	{ value: 'full_payment', label: '100% оплата (собственные средства)' },
 	{ value: 'mortgage', label: 'Ипотека' },
 	{ value: 'mat_capital', label: 'Материнский капитал' },
-	{ value: 'other', label: 'Другое' },
 ]
 
 const containedInputStyles = {
@@ -63,6 +62,7 @@ export default function DealFormPage() {
 				purchaseMethod: purchaseMethod!,
 			})
 			setDealSessionId(sessionId)
+			saveDealBuyerCitizenship(citizenship!)
 			navigate('/deal/deal_object')
 		} catch (err) {
 			if (err instanceof TypeError || (err instanceof Error && err.message.includes('fetch'))) {

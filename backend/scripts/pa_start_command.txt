@@ -1,0 +1,7 @@
+# Uvicorn command template for PythonAnywhere ASGI (beta).
+# Replace YOURUSERNAME. Run from Bash after setup (see chat instructions).
+#
+# /home/YOURUSERNAME/.virtualenvs/smartcheck/bin/uvicorn \
+#   --app-dir /home/YOURUSERNAME/CP-Project1/backend \
+#   --uds ${DOMAIN_SOCKET} \
+#   app.main:app

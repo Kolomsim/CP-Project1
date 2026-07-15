@@ -4,6 +4,7 @@ import HomePage from './pages/home/HomePage'
 import DealPage from './pages/deal'
 import DealFormPage from './pages/deal/deal_form'
 import DealObjectPage from './pages/deal/deal_object'
+import DealChecklistPage from './pages/deal/deal_checklist'
 import DealResultPage from './pages/deal/deal_result'
 import KbPage from './pages/kb/KnowledgeBasePage'
 import ArticleViewPage from './pages/article/ArticleViewPage'
@@ -36,6 +37,7 @@ function App() {
 					<Route index element={<DealPage />} />
 					<Route path='deal_form' element={<DealFormPage />} />
 					<Route path='deal_object' element={<DealObjectPage />} />
+					<Route path='deal_checklist' element={<DealChecklistPage />} />
 					<Route path='deal_result' element={<DealResultPage />} />
 				</Route>
 

@@ -3,20 +3,32 @@
   padding-bottom: calc(var(--mantine-spacing-xl) * 2);
 }
 
-.riskSection {
+.accordion :global(.mantine-Accordion-item) {
   background: var(--sc-surface);
   border-color: var(--sc-border-strong) !important;
   box-shadow: var(--sc-shadow);
 }
 
-.riskItem {
-  background: var(--sc-page);
-  border-color: var(--sc-border) !important;
+.flagCard,
+.sectionCard,
+.summaryCard,
+.questionCard {
+  background: var(--sc-surface);
+  border-color: var(--sc-border-strong) !important;
 }
 
-.consultationText {
+.questionCard {
+  background: color-mix(in srgb, var(--sc-surface) 88%, var(--mantine-color-brand-1));
+}
+
+.consultation {
   padding: var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-sm);
   background: color-mix(in srgb, var(--mantine-color-yellow-1) 70%, transparent);
   border-left: 3px solid var(--mantine-color-yellow-6);
+}
+
+.missingCard {
+  background: var(--sc-surface);
+  border-color: var(--sc-border-strong) !important;
 }

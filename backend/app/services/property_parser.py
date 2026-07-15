@@ -59,6 +59,8 @@ def _extract_property_old_from_offer(offer_data: Dict[str, Any]) -> Optional[str
         elif isinstance(crumbs, str):
             text = crumbs
         lower = text.lower()
+        if 'апартамент' in lower:
+            return 'Апартаменты'
         if 'новостр' in lower or 'первич' in lower:
             return 'Новостройка'
         if 'втор' in lower:
@@ -706,7 +708,7 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
         "floor": flat_data.get("floor", 0),
         "total_floors": flat_data.get("total_floors", 0),
         "rooms": flat_data.get("rooms", 0),
-        "property_type": _map_property_type_from_url(url),
+        "property_type": _resolve_property_type(flat_data, url),
         "deal_type": _map_deal_type_from_url(url),
         "seller": seller,
         "location": normalized_location,
@@ -717,14 +719,40 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
     }
 
 
+def _is_apartment(flat_data: Dict[str, Any], url: str = "") -> bool:
+    """Определяет, является ли объект апартаментами."""
+    searchable = " ".join(
+        [
+            str(flat_data.get("property_old") or ""),
+            str(flat_data.get("title") or ""),
+            str(flat_data.get("description") or ""),
+            str(flat_data.get("address") or ""),
+            url or str(flat_data.get("url") or ""),
+        ]
+    ).lower()
+    if "апартамент" in searchable:
+        return True
+    url_lower = (url or "").lower()
+    return any(token in url_lower for token in ("/apartments/", "/apartament", "/apart/"))
+
+
 def _map_property_type_from_url(url: str) -> str:
     """Определяет тип недвижимости из URL"""
     url_lower = url.lower()
+    if any(token in url_lower for token in ("/apartments/", "/apartament", "/apart/")):
+        return "apartment"
     if '/flat/' in url_lower or '/kvartira/' in url_lower:
         return "flat"
     elif '/house/' in url_lower or '/dom/' in url_lower:
         return "house"
     return "unknown"
+
+
+def _resolve_property_type(flat_data: Dict[str, Any], url: str = "") -> str:
+    """Определяет тип объекта с приоритетом апартаментов."""
+    if _is_apartment(flat_data, url):
+        return "apartment"
+    return _map_property_type_from_url(url)
 
 
 def _map_deal_type_from_url(url: str) -> str:
