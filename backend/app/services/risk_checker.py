@@ -139,7 +139,6 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Локальные проверки на основе данных покупателя из анкеты."""
     risks: List[Dict[str, Any]] = []
     purchase_method = _field_value(buyer_info.get("purchase_method"))
-    type_of_property = _field_value(buyer_info.get("type_of_property"))
     citizenship = _field_value(buyer_info.get("citizenship"))
 
     if purchase_method == "Материнский капитал":
@@ -188,26 +187,6 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
             "article_link": "/kb",
         })
 
-    if type_of_property == "новостройка":
-        risks.append({
-            "type": "primary_market",
-            "severity": RiskLevel.MEDIUM,
-            "title": "Покупка на первичном рынке",
-            "description": "При покупке новостройки важно проверить застройщика, сроки сдачи и условия договора долевого участия.",
-            "recommendation": "Изучите проектную декларацию и историю сдачи объектов застройщика.",
-            "article_link": "/kb",
-        })
-
-    if type_of_property == "вторичка":
-        risks.append({
-            "type": "secondary_market",
-            "severity": RiskLevel.MEDIUM,
-            "title": "Покупка на вторичном рынке",
-            "description": "При покупке вторичного жилья важно проверить историю объекта, права собственников и отсутствие обременений.",
-            "recommendation": "Запросите свежую выписку из ЕГРН и проверьте всех зарегистрированных жильцов.",
-            "article_link": "/kb",
-        })
-
     if citizenship and citizenship != "Россия":
         risks.append({
             "type": "foreign_citizenship",
@@ -229,6 +208,30 @@ def _check_property_risks(property_data: Dict[str, Any]) -> List[Dict[str, Any]]
         str(property_data.get("description", "")),
         str(property_data.get("title", "")),
     ]).lower()
+
+    market_category = _field_value(
+        property_data.get("market_category") or property_data.get("property_old")
+    ).strip().lower()
+
+    if "новостр" in market_category or "первич" in market_category:
+        risks.append({
+            "type": "primary_market",
+            "severity": RiskLevel.MEDIUM,
+            "title": "Покупка на первичном рынке",
+            "description": "При покупке новостройки важно проверить застройщика, сроки сдачи и условия договора долевого участия.",
+            "recommendation": "Изучите проектную декларацию и историю сдачи объектов застройщика.",
+            "article_link": "/kb",
+        })
+
+    if "втор" in market_category:
+        risks.append({
+            "type": "secondary_market",
+            "severity": RiskLevel.MEDIUM,
+            "title": "Покупка на вторичном рынке",
+            "description": "При покупке вторичного жилья важно проверить историю объекта, права собственников и отсутствие обременений.",
+            "recommendation": "Запросите свежую выписку из ЕГРН и проверьте всех зарегистрированных жильцов.",
+            "article_link": "/kb",
+        })
 
     if "материнск" in searchable_text and "капитал" in searchable_text:
         risks.append({

@@ -41,6 +41,11 @@ class PropertyPreviewResponse(BaseModel):
     
     property_type: str = Field(..., description="Тип недвижимости")
     deal_type: Optional[str] = Field(None, description="Тип сделки")
+    market_category: Optional[str] = Field(
+        None,
+        description="Тип рынка (новостройка/вторичка), из CIAN property_old",
+        example="вторичка",
+    )
     
     # Продавец
     seller: Seller = Field(..., description="Информация о продавце")

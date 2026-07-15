@@ -147,6 +147,7 @@ async def check_risks(session_id: str):
             "rooms": property_data.get("rooms"),
             "property_type": property_data.get("property_type"),
             "deal_type": property_data.get("deal_type"),
+            "market_category": property_data.get("market_category") or property_data.get("property_old"),
             "seller": seller_name,
         }
 

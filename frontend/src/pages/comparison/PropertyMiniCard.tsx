@@ -23,15 +23,15 @@ export function PropertyMiniCard({ property, selected, onToggle }: PropertyMiniC
 				gap: 12,
 				cursor: 'pointer',
 				opacity: selected ? 1 : 0.7,
-				borderColor: selected ? 'var(--mantine-color-violet-5)' : undefined,
-				background: selected ? 'var(--mantine-color-violet-0)' : undefined,
+				borderColor: selected ? 'var(--mantine-color-brand-5)' : undefined,
+				background: selected ? 'var(--mantine-color-brand-0)' : undefined,
 			}}
 			onClick={() => onToggle(property.id)}
 		>
 			<Checkbox
 				checked={selected}
 				onChange={() => onToggle(property.id)}
-				color='violet'
+				color='brand'
 				aria-label={`Выбрать ${property.title}`}
 			/>
 			<Box

@@ -22,6 +22,10 @@ function formatDetailArea(value: number | null | undefined): string {
 	return isMissingValue(value) ? EMPTY_VALUE : `${value} м²`
 }
 
+function formatDetailMarketCategory(value: string | null | undefined): string {
+	return value?.trim() ? value : EMPTY_VALUE
+}
+
 function DetailItem({ label, value }: { label: string; value: string }) {
 	return (
 		<Stack gap={4}>
@@ -78,7 +82,8 @@ export function PropertyPreviewCard({ property }: PropertyPreviewCardProps) {
 					<Tabs.Panel value='about' pt='md'>
 						<SimpleGrid cols={{ base: 2, sm: 3 }} spacing='md'>
 							<DetailItem label='Комнат' value={formatDetailNumber(property.rooms)} />
-							<DetailItem label='Тип жилья' value={property.propertyType || EMPTY_VALUE} />
+							<DetailItem label='Тип жилья' value={formatDetailMarketCategory(property.marketCategory)} />
+							<DetailItem label='Тип объекта' value={property.propertyType || EMPTY_VALUE} />
 							<DetailItem label='Площадь' value={formatDetailArea(property.totalArea)} />
 							<DetailItem label='Жилая' value={formatDetailArea(property.livingArea)} />
 							<DetailItem

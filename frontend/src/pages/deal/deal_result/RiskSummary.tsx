@@ -17,7 +17,7 @@ function getRatingColor(rating: string) {
 		return 'yellow'
 	}
 
-	return 'green'
+	return 'brand'
 }
 
 function getSeverityColor(severity: DealRisk['severity']) {

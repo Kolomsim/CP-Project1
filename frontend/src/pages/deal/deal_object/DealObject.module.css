@@ -4,17 +4,22 @@
 }
 
 .urlPaper {
-  background: var(--mantine-color-gray-1);
+  background: var(--sc-surface);
+  border-color: var(--sc-border-strong) !important;
+  box-shadow: var(--sc-shadow);
 }
 
 .previewCard {
-  background: var(--mantine-color-white);
+  background: var(--sc-surface);
+  border-color: var(--sc-border-strong) !important;
+  box-shadow: var(--sc-shadow);
 }
 
 .price {
   font-size: 28px;
   line-height: 1.1;
-  color: var(--mantine-color-violet-7);
+  color: var(--sc-accent-deep);
+  font-weight: 700;
 }
 
 .mapSection {
@@ -22,10 +27,11 @@
 }
 
 .mapFrame {
-  border: 1px solid var(--mantine-color-gray-3);
+  border: 1px solid var(--sc-border-strong);
   border-radius: var(--mantine-radius-md);
   overflow: hidden;
   height: 280px;
+  background: #e8eef3;
 }
 
 .mapFrame iframe {

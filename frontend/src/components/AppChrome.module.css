@@ -1,0 +1,44 @@
+.shell {
+	background: var(--sc-page);
+	min-height: 100vh;
+}
+
+.header {
+	background: var(--sc-surface);
+	border-bottom: 1px solid var(--sc-border-strong);
+	box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 4px 16px rgba(20, 32, 27, 0.04);
+}
+
+.brand {
+	font-family: 'Manrope', system-ui, sans-serif;
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	color: var(--sc-ink);
+	text-decoration: none;
+}
+
+.brandAccent {
+	color: var(--sc-accent);
+}
+
+.navBtn {
+	border: 1px solid var(--sc-border-strong) !important;
+	background: var(--sc-surface) !important;
+	color: var(--sc-ink) !important;
+	font-weight: 600;
+}
+
+.navBtn:hover {
+	background: var(--sc-mint-soft) !important;
+	border-color: color-mix(in srgb, var(--sc-accent) 35%, var(--sc-border-strong)) !important;
+}
+
+.footer {
+	padding: 1.35rem 1rem 1.85rem;
+	border-top: 1px solid var(--sc-border-strong);
+	background: #eef1ed;
+}
+
+.footerText {
+	color: var(--sc-muted) !important;
+}

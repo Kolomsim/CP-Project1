@@ -20,7 +20,7 @@ export default function DealPage() {
 					mb='xl'
 					center
 					icon={
-						<ThemeIcon color='blue' size={20} radius='xl'>
+						<ThemeIcon color='brand' size={20} radius='xl'>
 							<IconCheck size={12} stroke={1.5} />
 						</ThemeIcon>
 					}
@@ -30,7 +30,7 @@ export default function DealPage() {
 					<List.Item>Пошаговый чек-лист: индивидуальный список документов именно для вашей сделки.</List.Item>
 				</List>
 
-				<Button variant='solid' size='xl' radius='md' component={Link} to='/deal/deal_form'>
+				<Button className={classes.control} size='xl' radius='md' component={Link} to='/deal/deal_form'>
 					Начать
 				</Button>
 

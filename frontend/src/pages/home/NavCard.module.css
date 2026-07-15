@@ -20,8 +20,8 @@
 	width: 56px;
 	height: 56px;
 	border-radius: var(--mantine-radius-lg);
-	background: var(--mantine-color-blue-0);
-	color: var(--mantine-color-blue-6);
+	background: var(--mantine-color-brand-0);
+	color: var(--mantine-color-brand-6);
 	flex-shrink: 0;
 }
 

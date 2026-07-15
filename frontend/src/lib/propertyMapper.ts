@@ -26,6 +26,8 @@ export type ApiPropertyPreview = {
   total_floors: number
   rooms: number
   property_type: string
+  market_category?: string | null
+  property_old?: string | null
   deal_type?: string | null
   seller: ApiSeller
   location: ApiLocation
@@ -38,6 +40,13 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
   room: 'комната',
   land: 'участок',
   дом: 'дом',
+  новостройка: 'новостройка',
+  вторичка: 'вторичка',
+}
+
+const MARKET_CATEGORY_LABELS: Record<string, string> = {
+  primary: 'новостройка',
+  secondary: 'вторичка',
   новостройка: 'новостройка',
   вторичка: 'вторичка',
 }
@@ -63,6 +72,28 @@ function mapDealType(value?: string | null): string {
   return DEAL_TYPE_LABELS[value] ?? value
 }
 
+function mapMarketCategory(value?: string | null): string {
+  if (!value) {
+    return ''
+  }
+
+  const normalized = value.trim().toLowerCase().replace(/\u00a0/g, ' ')
+  if (/[мm][²2]|₽|руб|%/.test(normalized)) {
+    return ''
+  }
+  if (/\d/.test(normalized) && !/новостр|втор|первич/.test(normalized)) {
+    return ''
+  }
+  if (normalized.includes('новостр') || normalized.includes('первич')) {
+    return 'новостройка'
+  }
+  if (normalized.includes('втор')) {
+    return 'вторичка'
+  }
+
+  return MARKET_CATEGORY_LABELS[value] ?? MARKET_CATEGORY_LABELS[normalized] ?? ''
+}
+
 export function mapApiPropertyToPreview(data: ApiPropertyPreview): PropertyPreview {
   return {
     id: data.id,
@@ -78,6 +109,7 @@ export function mapApiPropertyToPreview(data: ApiPropertyPreview): PropertyPrevi
     totalFloors: data.total_floors,
     rooms: data.rooms,
     propertyType: mapPropertyType(data.property_type),
+    marketCategory: mapMarketCategory(data.market_category ?? data.property_old),
     dealType: mapDealType(data.deal_type),
     description: data.description ?? '',
     seller: {

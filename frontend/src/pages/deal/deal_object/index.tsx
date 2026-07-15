@@ -43,10 +43,14 @@ export default function DealObjectPage() {
 	const savedProperty = getDealPropertyPreview<PropertyPreview>()
 	const [url, setUrl] = useState(savedUrl)
 	const [debouncedUrl] = useDebouncedValue(url, 600)
-	const [property, setProperty] = useState<PropertyPreview | null>(savedProperty)
+	const [property, setProperty] = useState<PropertyPreview | null>(
+		savedProperty?.marketCategory ? savedProperty : null,
+	)
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const lastFetchedUrlRef = useRef(savedUrl ? normalizeUrl(savedUrl) : '')
+	const lastFetchedUrlRef = useRef(
+		savedProperty?.marketCategory && savedUrl ? normalizeUrl(savedUrl) : '',
+	)
 
 	const loadPreview = async (value: string, force = false) => {
 		const trimmed = value.trim()
@@ -72,7 +76,7 @@ export default function DealObjectPage() {
 
 		if (!isSupportedPropertyUrl(trimmed)) {
 			setProperty(null)
-			setError('Укажите ссылку с поддерживаемого сервиса: ЦИАН, Авито, Домклик или SmartCheck.')
+			setError('Укажите ссылку с поддерживаемого сервиса: ЦИАН.')
 			return
 		}
 
@@ -134,7 +138,7 @@ export default function DealObjectPage() {
 			{loading && (
 				<Paper withBorder radius='md' p='xl'>
 					<Stack align='center' gap='sm'>
-						<Loader color='violet' size='md' />
+						<Loader color='brand' size='md' />
 						<Text size='sm' c='dimmed'>
 							Загружаем данные объекта с ЦИАН... Это может занять до минуты.
 						</Text>
