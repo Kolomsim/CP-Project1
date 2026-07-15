@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Loader, Paper, Stack, Text } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { fetchDealCheckResult } from '../../../api/deal'
-import { getDealPropertyPreview } from '../../../lib/dealSession'
+import {
+	getDealBuyerCitizenship,
+	getDealChecklistAnswers,
+	getDealPropertyPreview,
+} from '../../../lib/dealSession'
 import type { PropertyPreview } from '../deal_object/types'
+import type { ChecklistAnswers } from '../deal_checklist/types'
+import { buildChecklistReport } from '../deal_checklist/utils'
 import DealReport from '../../../components/DealReport'
 import type { DealCheckResult } from './types'
 import classes from './DealResult.module.css'
@@ -12,6 +18,19 @@ export default function DealResultPage() {
 	const [result, setResult] = useState<DealCheckResult | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+
+	const checklistReport = useMemo(() => {
+		const property = getDealPropertyPreview<PropertyPreview>()
+		if (!property) return null
+
+		return buildChecklistReport({
+			marketCategory: property.marketCategory,
+			propertyType: property.propertyType,
+			searchText: `${property.title} ${property.description} ${property.address}`,
+			citizenship: getDealBuyerCitizenship(),
+			answers: getDealChecklistAnswers<ChecklistAnswers>(),
+		})
+	}, [result])
 
 	useEffect(() => {
 		const loadResult = async () => {
@@ -51,7 +70,7 @@ export default function DealResultPage() {
 				</Alert>
 			)}
 
-			{result && !loading && <DealReport result={result} />}
+			{result && !loading && <DealReport result={result} checklistReport={checklistReport} />}
 		</Stack>
 	)
 }

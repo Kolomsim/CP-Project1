@@ -6,6 +6,7 @@ import { fetchFavoriteProperties, deleteFavoriteProperty } from '../../api/deal'
 import DealReport from '../../components/DealReport'
 import type { DealCheckResult, DealRisk } from '../deal/deal_result/types'
 import type { PropertyPreview as DealPropertyPreview } from '../deal/deal_object/types'
+import type { ChecklistReport } from '../deal/deal_checklist/types'
 
 type SavedData = {
 	property: DealPropertyPreview
@@ -14,12 +15,14 @@ type SavedData = {
 	riskCount: number
 	criticalCount: number
 	checkDate: string
+	checklistReport?: ChecklistReport
 }
 
 export default function FavoritesReportPage() {
 	const { favoriteId } = useParams<{ favoriteId: string }>()
 	const navigate = useNavigate()
 	const [result, setResult] = useState<DealCheckResult | null>(null)
+	const [checklistReport, setChecklistReport] = useState<ChecklistReport | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [deleting, setDeleting] = useState(false)
@@ -52,6 +55,7 @@ export default function FavoritesReportPage() {
 					criticalCount: saved.criticalCount ?? 0,
 					checkDate: saved.checkDate,
 				})
+				setChecklistReport(saved.checklistReport ?? null)
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Не удалось загрузить отчёт')
 			} finally {
@@ -122,7 +126,12 @@ export default function FavoritesReportPage() {
 					</Button>
 				</Group>
 
-				<DealReport result={result} title='Полный отчёт по объекту' showSaveButton={false} />
+				<DealReport
+					result={result}
+					checklistReport={checklistReport}
+					title='Полный отчёт по объекту'
+					showSaveButton={false}
+				/>
 			</Stack>
 		</Container>
 	)

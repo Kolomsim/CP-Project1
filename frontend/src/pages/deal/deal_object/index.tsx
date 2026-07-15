@@ -163,7 +163,7 @@ export default function DealObjectPage() {
 
 					<PropertyPreviewCard property={property} />
 
-					<Button component={Link} to='/deal/deal_result' size='md' mt='md'>
+					<Button component={Link} to='/deal/deal_checklist' size='md' mt='md'>
 						Продолжить
 					</Button>
 				</Stack>

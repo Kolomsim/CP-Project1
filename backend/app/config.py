@@ -1,8 +1,11 @@
 import os
-from dotenv import load_dotenv
+from pathlib import Path
 from typing import Optional
 
-load_dotenv()
+from dotenv import load_dotenv
+
+# Load backend/.env regardless of process cwd (needed on PythonAnywhere)
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 class Config:
     APP_NAME: str = os.getenv("APP_NAME", "SmartCheck Недвижимость")

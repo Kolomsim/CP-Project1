@@ -36,10 +36,12 @@ export type ApiPropertyPreview = {
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   flat: 'квартира',
+  apartment: 'апартаменты',
   house: 'дом',
   room: 'комната',
   land: 'участок',
   дом: 'дом',
+  апартаменты: 'апартаменты',
   новостройка: 'новостройка',
   вторичка: 'вторичка',
 }
@@ -61,7 +63,11 @@ const DEAL_TYPE_LABELS: Record<string, string> = {
 }
 
 function mapPropertyType(value: string): string {
-  return PROPERTY_TYPE_LABELS[value] ?? value
+  const lower = value.trim().toLowerCase()
+  if (lower.includes('апартамент') || lower === 'apartment') {
+    return 'апартаменты'
+  }
+  return PROPERTY_TYPE_LABELS[value] ?? PROPERTY_TYPE_LABELS[lower] ?? value
 }
 
 function mapDealType(value?: string | null): string {
