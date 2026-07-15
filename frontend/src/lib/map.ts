@@ -50,6 +50,7 @@ export function buildTwoGisMapSrcDoc(options: {
   <style>
     html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #e8eef3; }
     .leaflet-container { width: 100%; height: 100%; font: 12px/1.4 system-ui, sans-serif; }
+    .leaflet-control-attribution { display: none !important; }
     #fallback {
       display: none; box-sizing: border-box; height: 100%; padding: 16px;
       font: 14px/1.4 system-ui, sans-serif; color: #6b7280;
@@ -78,13 +79,13 @@ export function buildTwoGisMapSrcDoc(options: {
       try {
         if (!window.L) { showError(); return; }
 
-        var map = L.map('map', { zoomControl: true }).setView([lat, lon], 16);
+        var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([lat, lon], 16);
         L.tileLayer(
           'https://tile{s}-sdk.maps.2gis.com/v2/tiles?x={x}&y={y}&z={z}&v=1&ts=online_sd&key=${tileKey}',
           {
             subdomains: '0123',
             maxZoom: 18,
-            attribution: '&copy; <a href="https://2gis.ru" target="_blank" rel="noopener">2GIS</a>'
+            attribution: ''
           }
         ).addTo(map);
 
