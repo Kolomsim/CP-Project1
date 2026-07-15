@@ -1,6 +1,8 @@
 import { Route, Routes } from 'react-router'
 import { Container, Stack, Text, Title } from '@mantine/core'
 import HomePage from './pages/home/HomePage'
+import MainPage from './pages/main/MainPage'
+import FAQPage from './pages/faq/FAQPage'
 import DealPage from './pages/deal'
 import DealFormPage from './pages/deal/deal_form'
 import DealObjectPage from './pages/deal/deal_object'
@@ -30,6 +32,8 @@ function NotFound() {
 function App() {
 	return (
 		<Routes>
+			<Route path='/main' element={<MainPage />} />
+
 			<Route element={<AppLayout />}>
 				<Route path='/' element={<HomePage />} />
 
@@ -42,6 +46,7 @@ function App() {
 				</Route>
 
 				<Route path='/kb' element={<KbPage />} />
+				<Route path='/faq' element={<FAQPage />} />
 				<Route path='/kb/new' element={<ArticleEditorPage />} />
 				<Route path='/kb/:articleId' element={<ArticleViewPage />} />
 				<Route path='/kb/:articleId/edit' element={<ArticleEditorPage />} />

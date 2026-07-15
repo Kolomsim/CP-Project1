@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router'
 import { useEffect, useState } from 'react'
-import { Anchor, Container, Group, Loader, Stack, Text } from '@mantine/core'
+import { Anchor, Container, Group, Loader, Paper, Stack, Text } from '@mantine/core'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { fetchArticleById, type ArticleDetail } from '../../api/articles'
@@ -64,9 +64,11 @@ export default function ArticleViewPage() {
 				<ArticleViewHeader article={article} articleId={articleId!} isAuthor={isAuthor} />
 
 				{/* Markdown content */}
-				<article className={classes['markdown-content']}>
-					<ReactMarkdown remarkPlugins={[remarkGfm]}>{article.content}</ReactMarkdown>
-				</article>
+				<Paper withBorder p='xl' radius='md' style={{ background: 'white' }}>
+					<article className={classes['markdown-content']}>
+						<ReactMarkdown remarkPlugins={[remarkGfm]}>{article.content}</ReactMarkdown>
+					</article>
+				</Paper>
 			</Stack>
 		</Container>
 	)
