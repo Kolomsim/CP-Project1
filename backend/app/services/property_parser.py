@@ -678,5 +678,5 @@ if __name__ == "__main__":
     with open('flat_data.json', 'a+', encoding='utf-8') as f:
         parser = CianListingParser()
         # json.dump(_parse_cian_single_listing("https://www.cian.ru/sale/flat/327960213/?context=4.acmm5-RoIg8._W-2OYSz1vykZI0bwLc0-UgpxjdULRS3r7S5Ma_wAahLw3cS58yA2xM41Ahqi7HMyy3vLaN3UXuTmA&mlSearchSessionGuid=98a159afde7f6599110dfa7464114f97", 327960213), f, ensure_ascii=False, indent=2)
-        json.dump(parse_property_url("https://mytishchi.cian.ru/sale/flat/322363634/?mlSearchSessionGuid=83b6624852f6a36c3a1bbd99a605c123&context=4.Yys7SlrkLUA.Aq29qE6cx6AlIXRTk1awbmJ9uwgIVdycj9cNJbpzzF4Ypn7Tg_u_BH_843Ozue7UQWsZBghNBew9nbhHhhzi_sA7O3f9N3dxfzqTxPw4IHY_tHpg"), f, ensure_ascii=False, indent=2)
+        json.dump(parse_property_url("https://www.cian.ru/sale/flat/329172173/?context=4.sNDukx1Mlf4.qwKCD-bpAIngenBKtCuTk2PJw6-XcXakgP4kwryc20N2oY92gG5qW5b9HHVbl7dzr1DgHx6InbZECg&mlSearchSessionGuid=ea7c62f489d1a7fe4707bb7fb2319538"), f, ensure_ascii=False, indent=2)
 

@@ -32,16 +32,16 @@ async def lifespan(app: FastAPI):
     logger.info("Starting up...")
     await init_db()
     
-    app.state.yandex_client = httpx.AsyncClient(timeout=10.0)
-    logger.info("Yandex HTTP client initialized successfully.")
+    app.state.dgis_client = httpx.AsyncClient(timeout=10.0)
+    logger.info("2GIS client initialized successfully.")
     
     yield 
     
     logger.info("Shutting down...")
     await close_db()
-    
-    await app.state.yandex_client.aclose()
-    logger.info("Yandex HTTP client closed successfully.")
+
+    await app.state.dgis_client.aclose()
+    logger.info("2GIS HTTP client closed successfully.")
 
 
 app = FastAPI(
