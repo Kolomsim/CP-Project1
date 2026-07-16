@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { getRiskLevelLabel } from '../utils/format'
 import type { DealCheckResult } from '../pages/deal/deal_result/types'
 import type { ChecklistReport } from '../pages/deal/deal_checklist/types'
+import { NearbyPlacesMap } from '../pages/deal/deal_result/NearbyPlacesMap'
 
 type DealReportProps = {
 	result: DealCheckResult
@@ -81,7 +82,12 @@ export default function DealReport({
 
 			<RiskSummary result={result} />
 			{checklistReport && <ChecklistResultSummary report={checklistReport} />}
-			<PropertyPreviewCard property={result.property} />
+			<PropertyPreviewCard property={result.property} showMap={false} />
+			<NearbyPlacesMap
+				lat={result.property.location.lat}
+				lon={result.property.location.lon}
+				address={result.property.address}
+			/>
 
 			{showSaveButton && (
 				<>

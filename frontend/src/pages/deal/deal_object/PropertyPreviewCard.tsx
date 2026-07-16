@@ -6,6 +6,7 @@ import classes from './DealObject.module.css'
 
 type PropertyPreviewCardProps = {
 	property: PropertyPreview
+	showMap?: boolean
 }
 
 const EMPTY_VALUE = '—'
@@ -39,7 +40,7 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 	)
 }
 
-export function PropertyPreviewCard({ property }: PropertyPreviewCardProps) {
+export function PropertyPreviewCard({ property, showMap = true }: PropertyPreviewCardProps) {
 	const titleLine = `${property.title}, ${formatDetailArea(property.totalArea)}, ${formatDetailNumber(property.floor)}/${formatDetailNumber(property.totalFloors)} этаж`
 
 	return (
@@ -96,7 +97,9 @@ export function PropertyPreviewCard({ property }: PropertyPreviewCardProps) {
 					</Tabs.Panel>
 				</Tabs>
 
-				<PropertyMap lat={property.location.lat} lon={property.location.lon} address={property.address} />
+				{showMap && (
+					<PropertyMap lat={property.location.lat} lon={property.location.lon} address={property.address} />
+				)}
 			</Stack>
 		</Paper>
 	)
