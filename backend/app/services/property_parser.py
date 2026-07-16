@@ -223,7 +223,7 @@ class CianListingParser:
                     data['location']['lat'] = coordinates.get('lat', 0.0)
                     data['location']['lon'] = coordinates.get('lng', 0.0)
             
-            # ===== ИНФОРМАЦИЯ О ПРОДАВЦЕ =====
+            # ===== ИНФОРМАЦИЯ О ПРОДАВЦЕ / ЗАСТРОЙЩИКЕ =====
             # Ищем в разных местах
             agent_data = None
             
@@ -246,10 +246,74 @@ class CianListingParser:
                 if 'agent' in offer_data_wrapper:
                     agent_data = offer_data_wrapper['agent']
             
-            if agent_data:
-                if 'seller' not in data:
-                    data['seller'] = {}
+            # ===== ДОПОЛНИТЕЛЬНЫЕ ПУТИ ДЛЯ ЗАСТРОЙЩИКА =====
+            developer_data = None
+            
+            # Путь 5: offer.building.developer — застройщик в данных о здании
+            building = offer_data.get('building', {})
+            if building and 'developer' in building:
+                developer_data = building['developer']
+            
+            # Путь 6: offer.developer — прямой блок с застройщиком
+            if not developer_data and 'developer' in offer_data:
+                developer_data = offer_data['developer']
+            
+            # Путь 7: bffData.developer
+            if not developer_data and bff_data and 'developer' in bff_data:
+                developer_data = bff_data['developer']
+            
+            # Путь 8: offerData.developer
+            if not developer_data:
+                initial_state = page_props.get('initialState', {})
+                offer_data_wrapper = initial_state.get('offerData', {})
+                if 'developer' in offer_data_wrapper:
+                    developer_data = offer_data_wrapper['developer']
+            
+            # Путь 9: building.developer в bffData
+            if not developer_data and bff_data:
+                bff_building = bff_data.get('building', {})
+                if bff_building and 'developer' in bff_building:
+                    developer_data = bff_building['developer']
+            
+            if 'seller' not in data:
+                data['seller'] = {}
+            
+            # Если нашли данные застройщика — используем их с приоритетом
+            if developer_data:
+                # Имя застройщика
+                dev_name = (
+                    developer_data.get('name')
+                    or developer_data.get('fullName')
+                    or developer_data.get('title')
+                    or developer_data.get('organizationName')
+                    or developer_data.get('displayName')
+                )
+                if dev_name:
+                    data['seller']['name'] = dev_name
+                    data['seller']['type'] = 'developer'
                 
+                # Название компании застройщика
+                dev_company = (
+                    developer_data.get('organizationName')
+                    or developer_data.get('fullName')
+                    or developer_data.get('name')
+                    or developer_data.get('title')
+                )
+                if dev_company:
+                    data['seller']['company_name'] = dev_company
+                
+                # Телефон застройщика
+                dev_phone = developer_data.get('phone') or developer_data.get('phones', [None])[0] if isinstance(developer_data.get('phones'), list) else developer_data.get('phone')
+                if dev_phone:
+                    data['seller']['phone'] = dev_phone
+                
+                # ID застройщика
+                dev_id = developer_data.get('id') or developer_data.get('developerId')
+                if dev_id:
+                    data['seller']['id'] = dev_id
+            
+            # Если данных застройщика нет, используем данные агента
+            if agent_data and not developer_data:
                 # Имя продавца
                 name = agent_data.get('name') or agent_data.get('displayName') or agent_data.get('agentName')
                 if name:
@@ -552,9 +616,49 @@ class CianListingParser:
                 data['floor'] = int(floor_match.group(1))
                 data['total_floors'] = int(floor_match.group(2))
         
-        # ===== ИЗВЛЕЧЕНИЕ ИНФОРМАЦИИ О ПРОДАВЦЕ ИЗ HTML =====
+        # ===== ИЗВЛЕЧЕНИЕ ИНФОРМАЦИИ О ПРОДАВЦЕ / ЗАСТРОЙЩИКЕ ИЗ HTML =====
         if 'seller' not in data:
             data['seller'] = {}
+        
+        # Вариант 0: Поиск блока застройщика по data-name="NewbuildingPremiumBuilderLogo"
+        # (структура ЦИАН для новостроек)
+        builder_logo = soup.find('div', attrs={'data-name': 'NewbuildingPremiumBuilderLogo'})
+        if builder_logo and not data['seller'].get('company_name'):
+            builder_text = builder_logo.get_text(strip=True)
+            # Текст вида "ЗастройщикУСК Сибиряк" — извлекаем название после "Застройщик"
+            dev_match = re.search(r'Застройщик\s*(.+?)$', builder_text)
+            if dev_match:
+                dev_name = dev_match.group(1).strip()
+                if dev_name and len(dev_name) > 1:
+                    data['seller']['company_name'] = dev_name
+                    data['seller']['name'] = dev_name
+                    data['seller']['type'] = 'developer'
+        
+        # Вариант 0.1: Поиск блока AuthorBrandingAside (альтернативный блок застройщика)
+        if not data['seller'].get('company_name'):
+            author_branding = soup.find('div', attrs={'data-name': 'AuthorBrandingAside'})
+            if author_branding:
+                author_text = author_branding.get_text(strip=True)
+                dev_match = re.search(r'Застройщик\s*(.+?)$', author_text)
+                if dev_match:
+                    dev_name = dev_match.group(1).strip()
+                    if dev_name and len(dev_name) > 1:
+                        data['seller']['company_name'] = dev_name
+                        data['seller']['name'] = dev_name
+                        data['seller']['type'] = 'developer'
+        
+        # Вариант 0.2: Поиск H1 с текстом "Застройщик «Название»"
+        if not data['seller'].get('company_name'):
+            h1_dev = soup.find('h1', string=re.compile(r'Застройщик\s*«'))
+            if h1_dev:
+                h1_text = h1_dev.get_text(strip=True)
+                dev_match = re.search(r'Застройщик\s*«([^»]+)»', h1_text)
+                if dev_match:
+                    dev_name = dev_match.group(1).strip()
+                    if dev_name and len(dev_name) > 1:
+                        data['seller']['company_name'] = dev_name
+                        data['seller']['name'] = dev_name
+                        data['seller']['type'] = 'developer'
         
         # Ищем блок с информацией о продавце
         # Вариант 1: Блок с классом AgentCard или OfferCardAgent
@@ -612,6 +716,31 @@ class CianListingParser:
                 name_elem = seller_info.find(['span', 'div', 'a'])
                 if name_elem:
                     data['seller']['name'] = name_elem.get_text(strip=True)
+        
+        # Вариант 5: Поиск названия застройщика через JSON в HTML (companyName)
+        if not data['seller'].get('company_name') and not data['seller'].get('name'):
+            # Ищем "companyName":"Сибиряк" в JSON-скриптах
+            company_match = re.search(r'"companyName"\s*:\s*"([^"]+)"', html)
+            if company_match:
+                company_name = company_match.group(1).strip()
+                if company_name and len(company_name) > 1 and company_name.lower() != 'null':
+                    data['seller']['company_name'] = company_name
+                    if not data['seller'].get('name'):
+                        data['seller']['name'] = company_name
+                    data['seller']['type'] = 'developer'
+        
+        # Вариант 6: Поиск названия застройщика в тексте страницы
+        if not data['seller'].get('company_name') and not data['seller'].get('name'):
+            dev_text_match = re.search(
+                r'(?:Застройщик|Застройщика|Застройщику)\s*[:\s]+([А-ЯЁ][А-ЯЁа-яё\s\-]{2,50})',
+                page_text,
+            )
+            if dev_text_match:
+                dev_name = dev_text_match.group(1).strip()
+                if dev_name and len(dev_name) > 2:
+                    data['seller']['company_name'] = dev_name
+                    data['seller']['name'] = dev_name
+                    data['seller']['type'] = 'developer'
         
         return data
     

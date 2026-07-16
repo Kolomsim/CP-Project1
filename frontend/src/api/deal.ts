@@ -3,6 +3,7 @@ import { getDealSessionId } from '../lib/dealSession'
 import { mapApiPropertyToPreview, type ApiPropertyPreview } from '../lib/propertyMapper'
 import type { PropertyPreview } from '../pages/deal/deal_object/types'
 import type { DealCheckResult, DealRisk } from '../pages/deal/deal_result/types'
+import type { DeveloperAutoCheck } from '../pages/deal/deal_checklist/types'
 
 type BuyerInfoPayload = {
 	citizenship: string
@@ -26,6 +27,8 @@ type ApiRisk = {
 	recommendation: string
 	article_link?: string | null
 	details?: string | null
+	auto_check?: boolean | null
+	check_url?: string | null
 }
 
 type CheckRisksResponse = {
@@ -61,13 +64,12 @@ function mapRisk(risk: ApiRisk): DealRisk {
 		recommendation: risk.recommendation,
 		articleLink: risk.article_link ?? undefined,
 		details: risk.details ?? undefined,
+		autoCheck: risk.auto_check ?? undefined,
+		checkUrl: risk.check_url ?? undefined,
 	}
 }
 
-export async function saveBuyerInfo(form: {
-	citizenship: string
-	purchaseMethod: string
-}): Promise<string> {
+export async function saveBuyerInfo(form: { citizenship: string; purchaseMethod: string }): Promise<string> {
 	const payload: BuyerInfoPayload = {
 		citizenship: CITIZENSHIP_MAP[form.citizenship] ?? 'Россия',
 		purchase_method: PURCHASE_METHOD_MAP[form.purchaseMethod] ?? 'Сразу',
@@ -130,6 +132,19 @@ export async function fetchDealCheckResult(
 		criticalCount: response.critical_count,
 		checkDate: response.check_date,
 	}
+}
+
+/** Получить автоматические ответы на вопросы чек-листа застройщика из ФНС */
+export async function fetchDeveloperCheck(sessionId?: string): Promise<DeveloperAutoCheck> {
+	const resolvedSessionId = sessionId ?? getDealSessionId()
+	if (!resolvedSessionId) {
+		throw new Error('Сессия не найдена. Пройдите шаги сделки с начала.')
+	}
+
+	return apiRequest<DeveloperAutoCheck>('/deal/developer-check', {
+		method: 'POST',
+		body: JSON.stringify({ session_id: resolvedSessionId }),
+	})
 }
 
 type PropertyItemResponse = {

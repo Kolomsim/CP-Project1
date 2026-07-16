@@ -32,10 +32,12 @@ function NotFound() {
 function App() {
 	return (
 		<Routes>
+			{/* Корневой маршрут — MainPage (landing для всех) */}
+			<Route path='/' element={<MainPage />} />
 			<Route path='/main' element={<MainPage />} />
 
 			<Route element={<AppLayout />}>
-				<Route path='/' element={<HomePage />} />
+				<Route path='/home' element={<HomePage />} />
 
 				<Route path='deal'>
 					<Route index element={<DealPage />} />

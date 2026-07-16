@@ -8,9 +8,17 @@ class PropertyInfoRequest(BaseModel):
 
 
 class Seller(BaseModel):
-    name: str = Field(..., description="ФИО продавца")
+    name: str = Field(..., description="ФИО продавца / название застройщика")
     phone: Optional[str] = Field(None, description="Телефон продавца")
     inn: Optional[str] = Field(None, description="ИНН продавца (для проверки банкротства)")
+    type: Optional[str] = Field(None, description="Тип продавца: owner, agency, developer")
+    company_name: Optional[str] = Field(None, description="Название компании (для агентств и застройщиков)")
+    ogrn: Optional[str] = Field(None, description="ОГРН компании (из ФНС)")
+    full_name: Optional[str] = Field(None, description="Полное наименование компании (из ФНС)")
+    nalog_status: Optional[str] = Field(None, description="Статус организации в ФНС")
+    registration_date: Optional[str] = Field(None, description="Дата регистрации (из ФНС)")
+    region: Optional[str] = Field(None, description="Регион (из ФНС)")
+    okved: Optional[str] = Field(None, description="Основной ОКВЭД (из ФНС)")
 
 
 # Геолокация объекта

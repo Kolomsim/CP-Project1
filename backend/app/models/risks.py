@@ -14,6 +14,8 @@ class Risk(BaseModel):
     recommendation: str = Field(..., description="Рекомендация для пользователя")
     article_link: Optional[str] = Field(None, description="Ссылка на статью в базе знаний")
     details: Optional[str] = Field(None, description="Дополнительные детали (например, номер дела)")
+    auto_check: Optional[bool] = Field(None, description="Флаг: риск можно перепроверить автоматически")
+    check_url: Optional[str] = Field(None, description="Ссылка для перепроверки риска")
 
 class RequiredDocument(BaseModel):
     """

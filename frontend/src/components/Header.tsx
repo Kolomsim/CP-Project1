@@ -1,6 +1,15 @@
 import { Link } from 'react-router'
 import { Group, Text, Menu, Avatar, Button, CopyButton, ActionIcon, Tooltip } from '@mantine/core'
-import { IconGitCompare, IconHeart, IconUser, IconLogout, IconChevronDown, IconCopy, IconCheck } from '@tabler/icons-react'
+import {
+	IconGitCompare,
+	IconHeart,
+	IconUser,
+	IconLogout,
+	IconChevronDown,
+	IconCopy,
+	IconCheck,
+	IconQuestionMark,
+} from '@tabler/icons-react'
 import { useAuth } from '../context/AuthContext'
 import classes from './AppChrome.module.css'
 
@@ -14,6 +23,16 @@ export function Header() {
 					Smart<span className={classes.brandAccent}>Check</span>
 				</Text>
 				<Group gap='xs'>
+					<Button
+						component={Link}
+						to='/faq'
+						className={classes.navBtn}
+						variant='subtle'
+						size='sm'
+						leftSection={<IconQuestionMark stroke={1.5} size={18} />}
+					>
+						FAQ
+					</Button>
 					{isLoading ? (
 						<Button className={classes.navBtn} variant='default' size='sm' loading>
 							Загрузка
@@ -66,12 +85,7 @@ export function Header() {
 											<CopyButton value={user.name} timeout={2000}>
 												{({ copied, copy }) => (
 													<Tooltip label={copied ? 'Скопировано' : 'Скопировать'} withArrow position='right'>
-														<ActionIcon
-															variant='subtle'
-															color={copied ? 'brand' : 'gray'}
-															size='sm'
-															onClick={copy}
-														>
+														<ActionIcon variant='subtle' color={copied ? 'brand' : 'gray'} size='sm' onClick={copy}>
 															{copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
 														</ActionIcon>
 													</Tooltip>

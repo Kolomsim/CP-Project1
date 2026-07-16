@@ -68,17 +68,32 @@ export function PropertyPreviewCard({ property, showMap = true }: PropertyPrevie
 
 				<Tabs defaultValue='about' variant='outline' radius='md'>
 					<Tabs.List>
-						{/* <Tabs.Tab value="seller">Продавец</Tabs.Tab> */}
+						<Tabs.Tab value='seller'>Продавец</Tabs.Tab>
 						<Tabs.Tab value='about'>О квартире</Tabs.Tab>
 					</Tabs.List>
 
-					{/* <Tabs.Panel value="seller" pt="md">
-            <Stack gap="xs">
-              <DetailItem label="ФИО" value={property.seller.name} />
-              {property.seller.phone && <DetailItem label="Телефон" value={property.seller.phone} />}
-              <DetailItem label="Платформа" value={property.platform} />
-            </Stack>
-          </Tabs.Panel> */}
+					<Tabs.Panel value='seller' pt='md'>
+						<Stack gap='xs'>
+							<DetailItem label='Продавец' value={property.seller.name} />
+							{property.seller.type && (
+								<DetailItem
+									label='Тип продавца'
+									value={
+										property.seller.type === 'developer'
+											? 'Застройщик'
+											: property.seller.type === 'agency'
+												? 'Агентство'
+												: property.seller.type === 'owner'
+													? 'Собственник'
+													: property.seller.type
+									}
+								/>
+							)}
+							{property.seller.company_name && <DetailItem label='Компания' value={property.seller.company_name} />}
+							{property.seller.phone && <DetailItem label='Телефон' value={property.seller.phone} />}
+							<DetailItem label='Платформа' value={property.platform} />
+						</Stack>
+					</Tabs.Panel>
 
 					<Tabs.Panel value='about' pt='md'>
 						<SimpleGrid cols={{ base: 2, sm: 3 }} spacing='md'>

@@ -1,6 +1,7 @@
 # app/services/risk_checker.py
 
 import datetime
+import json
 import logging
 import asyncio
 from enum import Enum
@@ -12,6 +13,7 @@ from app.services.external_api import (
     check_fssp
     # check_arrests,
 )
+from app.services.nalog_parser import search_company as search_nalog_company
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,7 @@ async def check_all_risks(
     cadastral_number: Optional[str] = None,
     buyer_info: Optional[Dict[str, Any]] = None,
     property_data: Optional[Dict[str, Any]] = None,
+    company_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Асинхронная проверка всех рисков. Выполняет параллельные запросы к внешним API.
@@ -60,7 +63,13 @@ async def check_all_risks(
     else:
         tasks.append(asyncio.sleep(0, result=None))
 
-    # 3. Аресты (если есть кадастровый номер)
+    # 3. Проверка компании в ФНС (для застройщиков)
+    if company_name and company_name not in ("", "Неизвестно"):
+        tasks.append(_check_company_nalog(company_name))
+    else:
+        tasks.append(asyncio.sleep(0, result=None))
+
+    # 4. Аресты (если есть кадастровый номер)
     # if cadastral_number:
     #     tasks.append(check_arrests(cadastral_number))
     # else:
@@ -72,7 +81,8 @@ async def check_all_risks(
     # Обрабатываем результаты
     bankruptcy_data = results[0]
     fssp_data = results[1]
-    # arrest_data = results[2]  # Закомментировано, так как check_arrests отсутствует в tasks
+    nalog_data = results[2]
+    # arrest_data = results[3]  # Закомментировано
 
     # Формируем риски
     if bankruptcy_data and isinstance(bankruptcy_data, dict) and bankruptcy_data.get("is_bankrupt"):
@@ -94,6 +104,16 @@ async def check_all_risks(
             "recommendation": "Попросите продавца предоставить справку об отсутствии долгов из ФССП.",
             "details": f"Количество дел: {len(fssp_data.get('cases', []))}"
         })
+
+    # 3. Проверка компании в ФНС
+    if nalog_data and isinstance(nalog_data, dict):
+        nalog_risks = nalog_data.get("risks", [])
+        risks.extend(nalog_risks)
+        
+        # Если нашли ИНН — сохраняем его для дальнейшего использования
+        found_inn = nalog_data.get("inn")
+        if found_inn and not inn:
+            inn = found_inn
 
     # arrest_data отсутствует, поэтому проверка arrest удалена
 
@@ -306,3 +326,124 @@ def _generate_documents_checklist(risks: List[Dict[str, Any]]) -> List[Dict[str,
             unique_docs.append(doc)
 
     return unique_docs
+
+
+async def _check_company_nalog(company_name: str) -> Optional[Dict[str, Any]]:
+    """
+    Проверка компании в ФНС (Прозрачный бизнес).
+    Ищет компанию по названию и возвращает информацию о ней.
+    """
+    try:
+        company_info = await search_nalog_company(company_name)
+        if company_info is None:
+            return {
+                "inn": None,
+                "risks": [{
+                    "type": "company_not_found",
+                    "severity": RiskLevel.HIGH,
+                    "title": "Компания не найдена в реестре ФНС",
+                    "description": (
+                        f"Организация «{company_name}» не найдена в реестре "
+                        "юридических лиц ФНС. Это может означать, что компания "
+                        "не зарегистрирована или была ликвидирована."
+                    ),
+                    "recommendation": (
+                        "Проверьте название компании вручную на сайте "
+                        "pb.nalog.ru. Запросите у продавца ИНН и ОГРН."
+                    ),
+                    "auto_check": True,
+                    "check_url": "https://pb.nalog.ru/search.html",
+                }],
+            }
+        
+        risks = []
+        
+        # Проверка статуса: ликвидирована
+        if company_info.status and "ликвидирован" in company_info.status.lower():
+            risks.append({
+                "type": "company_liquidated",
+                "severity": RiskLevel.HIGH,
+                "title": "Компания ликвидирована",
+                "description": (
+                    f"Организация «{company_info.short_name}» имеет статус "
+                    f"«{company_info.status}». Сделка с ликвидированной "
+                    "компанией невозможна."
+                ),
+                "recommendation": (
+                    "Откажитесь от сделки. Ликвидированная организация "
+                    "не может быть продавцом недвижимости."
+                ),
+                "details": f"ИНН: {company_info.inn}, ОГРН: {company_info.ogrn}",
+                "auto_check": True,
+                "check_url": "https://pb.nalog.ru/search.html",
+            })
+        
+        # Проверка статуса: реорганизована
+        if company_info.status and "реорганизован" in company_info.status.lower():
+            risks.append({
+                "type": "company_reorganized",
+                "severity": RiskLevel.MEDIUM,
+                "title": "Компания реорганизована",
+                "description": (
+                    f"Организация «{company_info.short_name}» находится "
+                    f"в процессе реорганизации (статус: «{company_info.status}»). "
+                    "Требуется проверка правопреемника."
+                ),
+                "recommendation": (
+                    "Уточните, кто является правопреемником компании, "
+                    "и проверьте документы о переходе прав."
+                ),
+                "details": f"ИНН: {company_info.inn}",
+                "auto_check": True,
+                "check_url": "https://pb.nalog.ru/search.html",
+            })
+        
+        # Если компания не активна, но не ликвидирована и не реорганизована
+        if company_info.is_active is False and not risks:
+            risks.append({
+                "type": "company_inactive",
+                "severity": RiskLevel.HIGH,
+                "title": "Компания неактивна",
+                "description": (
+                    f"Организация «{company_info.short_name}» не является "
+                    f"действующей (статус: «{company_info.status}»)."
+                ),
+                "recommendation": (
+                    "Проверьте актуальный статус компании на сайте pb.nalog.ru."
+                ),
+                "details": f"ИНН: {company_info.inn}",
+                "auto_check": True,
+                "check_url": "https://pb.nalog.ru/search.html",
+            })
+        
+        # Если компания активна — добавляем информационный риск
+        if company_info.is_active and company_info.inn:
+            risks.append({
+                "type": "company_verified",
+                "severity": RiskLevel.LOW,
+                "title": "Компания найдена в реестре ФНС",
+                "description": (
+                    f"Организация «{company_info.short_name}» найдена в реестре "
+                    f"юридических лиц. Статус: «{company_info.status}». "
+                    f"ИНН: {company_info.inn}, ОГРН: {company_info.ogrn}."
+                ),
+                "recommendation": (
+                    "Рекомендуется дополнительно проверить компанию "
+                    "на наличие долгов и судебных дел."
+                ),
+                "details": (
+                    f"Дата регистрации: {company_info.registration_date}, "
+                    f"ОКВЭД: {company_info.okved}"
+                ),
+                "auto_check": True,
+                "check_url": "https://pb.nalog.ru/search.html",
+            })
+        
+        return {
+            "inn": company_info.inn,
+            "risks": risks,
+        }
+        
+    except Exception as e:
+        logger.error(f"Ошибка при проверке компании в ФНС: {e}")
+        return None

@@ -50,3 +50,22 @@ export type ChecklistReport = {
 	checkedActions: number
 	totalActions: number
 }
+
+/** Автоматический ответ на вопрос чек-листа на основе данных ФНС */
+export type AutoAnswer = {
+	value: 'yes' | 'no'
+	source: string
+	details?: string
+}
+
+/** Результат полуавтоматической проверки застройщика через ФНС */
+export type DeveloperAutoCheck = {
+	company_name: string
+	inn: string
+	ogrn: string
+	status: string
+	registration_date: string
+	region: string
+	okved: string
+	auto_answers: Record<string, AutoAnswer>
+}

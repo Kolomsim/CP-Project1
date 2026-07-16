@@ -1,5 +1,5 @@
-import { Alert, Badge, Group, Paper, Stack, Text, Title } from '@mantine/core'
-import { IconAlertCircle, IconAlertTriangle, IconCircleCheck } from '@tabler/icons-react'
+import { Alert, Badge, Group, Paper, Stack, Text, Title, Tooltip } from '@mantine/core'
+import { IconAlertCircle, IconAlertTriangle, IconCircleCheck, IconQuestionMark } from '@tabler/icons-react'
 import type { ChecklistVerdict } from './types'
 import { verdictColor, verdictLabel } from './utils'
 import classes from './DealChecklist.module.css'
@@ -40,19 +40,36 @@ export function ChecklistSummary({ verdict, message, redCount, yellowCount }: Ch
 					</Badge>
 				</Group>
 
-
 				<Alert icon={verdictIcon(verdict)} color={color} variant='light' title={verdictTitle(verdict)}>
 					{message}
 				</Alert>
 
 				{verdict !== 'incomplete' && (
 					<Group gap='md'>
-						<Text size='sm' c='dimmed'>
-							Красных флагов: {redCount}
-						</Text>
-						<Text size='sm' c='dimmed'>
-							Жёлтых флагов: {yellowCount}
-						</Text>
+						<Tooltip
+							label='Красный – обнаружены серьёзные недостатки. Требуется консультация со специалистом.'
+							multiline
+							maw={280}
+							withArrow
+							openDelay={200}
+						>
+							<Text size='sm' c='red' style={{ cursor: 'help' }}>
+								Красных флагов: {redCount}
+								<IconQuestionMark size={12} style={{ marginLeft: 4, verticalAlign: 'middle' }} />
+							</Text>
+						</Tooltip>
+						<Tooltip
+							label='Жёлтый – выявлены незначительные особенности, требующие внимания.'
+							multiline
+							maw={280}
+							withArrow
+							openDelay={200}
+						>
+							<Text size='sm' c='yellow.7' style={{ cursor: 'help' }}>
+								Жёлтых флагов: {yellowCount}
+								<IconQuestionMark size={12} style={{ marginLeft: 4, verticalAlign: 'middle' }} />
+							</Text>
+						</Tooltip>
 					</Group>
 				)}
 			</Stack>

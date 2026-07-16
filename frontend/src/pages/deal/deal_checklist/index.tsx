@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Alert, Button, Paper, Stack, Text, Title } from '@mantine/core'
+import { Alert, Button, Loader, Paper, Stack, Text, Title } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import {
 	getDealBuyerCitizenship,
@@ -8,10 +8,11 @@ import {
 	getDealPropertyPreview,
 	saveDealChecklistAnswers,
 } from '../../../lib/dealSession'
+import { fetchDeveloperCheck } from '../../../api/deal'
 import type { PropertyPreview } from '../deal_object/types'
 import { DeveloperChecklist, SellerChecklist } from './Checklists'
 import { ChecklistSummary } from './ChecklistSummary'
-import type { ChecklistAnswers } from './types'
+import type { AutoAnswer, ChecklistAnswers } from './types'
 import {
 	emptyChecklistAnswers,
 	getChecklistVerdict,
@@ -36,9 +37,7 @@ function pageTitle(mode: 'developer' | 'seller' | null, hasExtras: boolean): str
 function pageDescription(mode: 'developer' | 'seller' | null, hasExtras: boolean): string {
 	const parts: string[] = []
 	if (mode === 'developer') {
-		parts.push(
-			'Отметьте выполненные проверки по застройщику и ответьте на вопросы о найденных рисках.',
-		)
+		parts.push('Отметьте выполненные проверки по застройщику и ответьте на вопросы о найденных рисках.')
 	} else if (mode === 'seller') {
 		parts.push('Отметьте выполненные проверки по продавцу и зафиксируйте ключевые риски.')
 	}
@@ -71,6 +70,53 @@ export default function DealChecklistPage() {
 			questions: saved.questions ?? {},
 		}
 	})
+
+	const [autoAnswers, setAutoAnswers] = useState<Record<string, AutoAnswer> | null>(null)
+	const [autoLoading, setAutoLoading] = useState(false)
+	const [autoError, setAutoError] = useState<string | null>(null)
+
+	// Загружаем авто-ответы из ФНС при монтировании для режима застройщика
+	useEffect(() => {
+		if (mode !== 'developer') return
+
+		let cancelled = false
+		setAutoLoading(true)
+		setAutoError(null)
+
+		fetchDeveloperCheck()
+			.then(data => {
+				if (!cancelled) {
+					setAutoAnswers(data.auto_answers)
+					// Автоматически применяем авто-ответы, если пользователь ещё не выбрал ответ
+					setAnswers(prev => {
+						const next = { ...prev }
+						let changed = false
+						for (const [qId, aa] of Object.entries(data.auto_answers)) {
+							if (next.questions[qId] === undefined || next.questions[qId] === null) {
+								next.questions = { ...next.questions, [qId]: aa.value }
+								changed = true
+							}
+						}
+						if (changed) {
+							saveDealChecklistAnswers(next)
+						}
+						return next
+					})
+				}
+			})
+			.catch(err => {
+				if (!cancelled) {
+					setAutoError(err instanceof Error ? err.message : 'Ошибка загрузки данных ФНС')
+				}
+			})
+			.finally(() => {
+				if (!cancelled) setAutoLoading(false)
+			})
+
+		return () => {
+			cancelled = true
+		}
+	}, [mode])
 
 	const summary = useMemo(
 		() => (mode || hasExtras ? getChecklistVerdict(mode, answers, extraSections) : null),
@@ -141,11 +187,32 @@ export default function DealChecklistPage() {
 				<Text c='dimmed'>{pageDescription(mode, hasExtras)}</Text>
 			</div>
 
+			{autoLoading && (
+				<Paper withBorder radius='md' p='md'>
+					<Stack align='center' gap='sm'>
+						<Loader size='sm' />
+						<Text size='sm' c='dimmed'>
+							Загружаем данные из ФНС для автоматического заполнения...
+						</Text>
+					</Stack>
+				</Paper>
+			)}
+
+			{autoError && (
+				<Alert icon={<IconAlertCircle size={16} />} color='yellow' variant='light' title='Данные ФНС не загружены'>
+					<Text size='sm'>{autoError}</Text>
+					<Text size='xs' c='dimmed' mt={4}>
+						Вы можете заполнить чек-лист вручную.
+					</Text>
+				</Alert>
+			)}
+
 			{mode === 'developer' && (
 				<DeveloperChecklist
 					answers={answers}
 					onActionToggle={handleActionToggle}
 					onQuestionChange={handleQuestionChange}
+					autoAnswers={autoAnswers ?? undefined}
 				/>
 			)}
 
