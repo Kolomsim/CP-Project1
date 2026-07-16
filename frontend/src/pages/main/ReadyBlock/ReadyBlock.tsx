@@ -1,4 +1,5 @@
 import { Text, Container, Box, Button } from '@mantine/core'
+import { Link } from 'react-router'
 import { IconShieldCheck, IconBooks } from '@tabler/icons-react'
 import classes from './ReadyBlock.module.css'
 
@@ -19,11 +20,19 @@ export default function HeroCTA() {
 					<Box h={8} />
 
 					<Box className={classes.buttons}>
-						<Button className={classes.buttonPrimary} size='lg' leftSection={<IconShieldCheck size={20} />}>
+						<Button
+							component={Link}
+							to='/deal/deal_form'
+							className={classes.buttonPrimary}
+							size='lg'
+							leftSection={<IconShieldCheck size={20} />}
+						>
 							Проверить объект
 						</Button>
 
 						<Button
+							component={Link}
+							to='/kb'
 							className={classes.buttonSecondary}
 							size='lg'
 							variant='outline'

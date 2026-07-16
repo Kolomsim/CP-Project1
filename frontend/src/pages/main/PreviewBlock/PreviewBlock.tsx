@@ -1,4 +1,5 @@
 import { Group, Stack, Paper, Text, Container, Button, Box } from '@mantine/core'
+import { Link } from 'react-router'
 import { IconCircleCheck, IconShieldCheck, IconBooks } from '@tabler/icons-react'
 import classes from './PreviewBlock.module.css'
 
@@ -42,11 +43,13 @@ export default function PreviewBlock() {
 								width: 371,
 							}}
 						>
-							Сервис анализа рисков при покупке и продаже недвижимости
+							Сервис анализа рисков при покупке недвижимости
 						</Text>
 
 						<Group gap={16}>
 							<Button
+								component={Link}
+								to='/deal/deal_form'
 								size='lg'
 								leftSection={<IconShieldCheck size={20} />}
 								style={{
@@ -65,6 +68,8 @@ export default function PreviewBlock() {
 								Проверить объект
 							</Button>
 							<Button
+								component={Link}
+								to='/kb'
 								size='lg'
 								variant='outline'
 								leftSection={<IconBooks size={20} />}

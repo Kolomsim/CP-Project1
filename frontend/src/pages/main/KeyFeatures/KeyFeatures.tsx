@@ -24,10 +24,10 @@ export default function KeyFeatures() {
 								</Box>
 								<Box>
 									<Text size='lg' className={classes.cardTitle}>
-										Проверка рисков
+										Проверка из открытых источников
 									</Text>
 									<Text size='sm' className={classes.cardDescription}>
-										Автоматический анализ объекта на наличие <br />
+										Полуавтоматическая проверка объекта на наличие <br />
 										обременений, арестов и других рисков <br />в считанные секунды
 									</Text>
 								</Box>
@@ -41,11 +41,12 @@ export default function KeyFeatures() {
 								</Box>
 								<Box>
 									<Text size='lg' className={classes.cardTitle}>
-										Сопровождение сделки
+										Чек-листы для проверки
 									</Text>
 									<Text size='sm' className={classes.cardDescription}>
-										Чек-листы, существенные условия договоров <br />
-										и ответы на частые вопросы по сделкам <br />с недвижимостью
+										Пошаговые чек-листы для самостоятельной проверки <br />
+										застройщика или продавца, существенные условия <br />
+										договоров и ответы на частые вопросы
 									</Text>
 								</Box>
 							</Group>
@@ -58,7 +59,7 @@ export default function KeyFeatures() {
 								</Box>
 								<Box>
 									<Text size='lg' className={classes.cardTitle}>
-										База знаний
+										Юридическая экспертиза
 									</Text>
 									<Text size='sm' className={classes.cardDescription}>
 										Актуальная информация по правовым вопросам <br />

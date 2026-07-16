@@ -1,4 +1,4 @@
-import { IconLock, IconDatabase, IconCertificate } from '@tabler/icons-react'
+import { IconLock, IconCertificate } from '@tabler/icons-react'
 import { Group, Text } from '@mantine/core'
 import classes from './SecurityBadges.module.css'
 
@@ -9,13 +9,6 @@ export default function SecurityBadges() {
 				<IconLock className={classes.icon} stroke={1.5} />
 				<Text size='md' className={classes.text}>
 					Проверка из открытых источников
-				</Text>
-			</Group>
-
-			<Group gap={16} className={classes.item}>
-				<IconDatabase className={classes.icon} stroke={1.5} />
-				<Text size='md' className={classes.text}>
-					Конфиденциальность данных
 				</Text>
 			</Group>
 
