@@ -1,4 +1,4 @@
-import { Route, Routes, Navigate, Outlet } from 'react-router'
+import { Route, Routes, Navigate } from 'react-router'
 import { Container, Stack, Text, Title } from '@mantine/core'
 import HomePage from './pages/home/HomePage'
 import MainPage from './pages/main/MainPage'
@@ -48,13 +48,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function App() {
 	return (
 		<Routes>
-			{/* Корневой маршрут — MainPage (landing) для всех */}
 			<Route path='/' element={<MainPage />} />
 			<Route path='/main' element={<MainPage />} />
 
-			{/* Маршруты с AppLayout (Header + Footer) */}
 			<Route element={<AppLayout />}>
-				{/* HomePage доступен только авторизованным */}
 				<Route
 					path='/home'
 					element={
@@ -78,7 +75,6 @@ function App() {
 				<Route path='/kb/:articleId' element={<ArticleViewPage />} />
 				<Route path='/kb/:articleId/edit' element={<ArticleEditorPage />} />
 
-				{/* Защищённые маршруты (только для авторизованных) */}
 				<Route
 					path='/comparison'
 					element={
