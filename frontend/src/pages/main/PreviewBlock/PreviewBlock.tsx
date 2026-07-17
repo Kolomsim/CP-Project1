@@ -1,4 +1,4 @@
-import { Group, Stack, Paper, Text, Container, Button, Box } from '@mantine/core'
+import { Group, Stack, Paper, Text, Container, Button, Box, Anchor, Tooltip } from '@mantine/core'
 import { Link } from 'react-router'
 import { IconCircleCheck, IconShieldCheck, IconBooks } from '@tabler/icons-react'
 import classes from './PreviewBlock.module.css'
@@ -25,10 +25,8 @@ export default function PreviewBlock() {
 				>
 					<Stack gap={32} style={{ flex: 1, maxWidth: 600 }}>
 						<Group gap={16} mb={8}>
-							<IconShieldCheck size={32} style={{ color: 'var(--sc-accent)' }} />
-							<Text size='xl' fw={800} style={{ color: 'var(--sc-ink)' }}>
-								SmartCheck
-							</Text>
+							<IconShieldCheck size={40} style={{ color: 'var(--sc-accent)' }} />
+							<Text style={{ color: 'var(--sc-ink)', fontSize: 32, fontWeight: 800 }}>SmartCheck</Text>
 						</Group>
 
 						<Text
@@ -90,20 +88,8 @@ export default function PreviewBlock() {
 					</Stack>
 
 					<Paper className={classes.resultCard} p={0}>
-						<Box className={classes.badgeGlass}>
-							<IconShieldCheck size={14} style={{ marginRight: 4 }} />
-							<span>Риск: низкий</span>
-						</Box>
-
 						<Box className={classes.imageWrapper}>
-							<Box className={classes.resultPlaceholder}>
-								<IconShieldCheck size={64} style={{ color: 'var(--sc-mint)', opacity: 0.5 }} />
-								<Text size='sm' c='dimmed' mt='sm'>
-									Пример отчёта по объекту
-								</Text>
-							</Box>
-
-							<Box className={classes.confidenceGlass}>Проверка завершена</Box>
+							<img src='/example.png' alt='Пример отчёта по объекту' className={classes.resultImage} />
 						</Box>
 
 						<Box className={classes.footerGlass}>
@@ -112,9 +98,16 @@ export default function PreviewBlock() {
 								<Text size='sm'>Объект проверен</Text>
 							</Group>
 
-							<Button variant='subtle' size='sm'>
-								Подробнее
-							</Button>
+							<Tooltip
+								label='Посмотреть отчёт можно сразу после проверки или на странице "Избранное"'
+								position='top'
+								withArrow
+								openDelay={200}
+							>
+								<Anchor component={Link} to='/favorites' size='sm' className={classes.detailLink}>
+									Подробнее
+								</Anchor>
+							</Tooltip>
 						</Box>
 					</Paper>
 				</Box>

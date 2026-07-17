@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router'
+import { Route, Routes, Navigate, Outlet } from 'react-router'
 import { Container, Stack, Text, Title } from '@mantine/core'
 import HomePage from './pages/home/HomePage'
 import MainPage from './pages/main/MainPage'
@@ -17,6 +17,7 @@ import FavoritesReportPage from './pages/favorites/FavoritesReportPage'
 import AuthPage from './pages/auth/AuthPage'
 import PrivacyPage from './pages/privacy_policy/privacy_policy'
 import { AppLayout } from './components/AppLayout'
+import { useAuth } from './context/AuthContext'
 
 function NotFound() {
 	return (
@@ -29,15 +30,39 @@ function NotFound() {
 	)
 }
 
+/** Перенаправляет на /auth, если пользователь не авторизован */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+	const { isAuthenticated, isLoading } = useAuth()
+
+	if (isLoading) {
+		return null
+	}
+
+	if (!isAuthenticated) {
+		return <Navigate to='/auth' replace />
+	}
+
+	return <>{children}</>
+}
+
 function App() {
 	return (
 		<Routes>
-			{/* Корневой маршрут — MainPage (landing для всех) */}
+			{/* Корневой маршрут — MainPage (landing) для всех */}
 			<Route path='/' element={<MainPage />} />
 			<Route path='/main' element={<MainPage />} />
 
+			{/* Маршруты с AppLayout (Header + Footer) */}
 			<Route element={<AppLayout />}>
-				<Route path='/home' element={<HomePage />} />
+				{/* HomePage доступен только авторизованным */}
+				<Route
+					path='/home'
+					element={
+						<ProtectedRoute>
+							<HomePage />
+						</ProtectedRoute>
+					}
+				/>
 
 				<Route path='deal'>
 					<Route index element={<DealPage />} />
@@ -52,9 +77,33 @@ function App() {
 				<Route path='/kb/new' element={<ArticleEditorPage />} />
 				<Route path='/kb/:articleId' element={<ArticleViewPage />} />
 				<Route path='/kb/:articleId/edit' element={<ArticleEditorPage />} />
-				<Route path='/comparison' element={<ComparisonPage />} />
-				<Route path='/favorites' element={<FavoritesPage />} />
-				<Route path='/favorites/:favoriteId' element={<FavoritesReportPage />} />
+
+				{/* Защищённые маршруты (только для авторизованных) */}
+				<Route
+					path='/comparison'
+					element={
+						<ProtectedRoute>
+							<ComparisonPage />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path='/favorites'
+					element={
+						<ProtectedRoute>
+							<FavoritesPage />
+						</ProtectedRoute>
+					}
+				/>
+				<Route
+					path='/favorites/:favoriteId'
+					element={
+						<ProtectedRoute>
+							<FavoritesReportPage />
+						</ProtectedRoute>
+					}
+				/>
+
 				<Route path='/auth' element={<AuthPage />} />
 				<Route path='/privacy' element={<PrivacyPage />} />
 				<Route path='*' element={<NotFound />} />

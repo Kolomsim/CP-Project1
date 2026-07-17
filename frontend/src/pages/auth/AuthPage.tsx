@@ -37,7 +37,7 @@ export default function AuthPage() {
 	}, [type, loadSuggestedUsername])
 
 	if (isAuthenticated) {
-		navigate('/')
+		navigate('/home')
 		return null
 	}
 
@@ -46,7 +46,7 @@ export default function AuthPage() {
 		setLoading(true)
 		try {
 			await login(values.username, values.password)
-			navigate('/')
+			navigate('/home')
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Произошла ошибка')
 		} finally {
@@ -63,7 +63,7 @@ export default function AuthPage() {
 		setLoading(true)
 		try {
 			await register(generatedUsername, password)
-			navigate('/')
+			navigate('/home')
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Произошла ошибка')
 		} finally {
