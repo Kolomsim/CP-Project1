@@ -64,9 +64,12 @@ async def check_all_risks(
         tasks.append(asyncio.sleep(0, result=None))
 
     # 3. Проверка компании в ФНС (для застройщиков)
+    logger.info(f"[DEBUG] check_all_risks: company_name={company_name!r}, inn={inn!r}")
     if company_name and company_name not in ("", "Неизвестно"):
+        logger.info(f"[DEBUG] Запускаем проверку компании в ФНС: {company_name}")
         tasks.append(_check_company_nalog(company_name))
     else:
+        logger.info(f"[DEBUG] Пропускаем проверку ФНС: company_name={company_name!r}")
         tasks.append(asyncio.sleep(0, result=None))
 
     # 4. Аресты (если есть кадастровый номер)
@@ -106,8 +109,10 @@ async def check_all_risks(
         })
 
     # 3. Проверка компании в ФНС
+    logger.info(f"[DEBUG] Результат проверки ФНС: nalog_data={nalog_data}")
     if nalog_data and isinstance(nalog_data, dict):
         nalog_risks = nalog_data.get("risks", [])
+        logger.info(f"[DEBUG] Найдено рисков из ФНС: {len(nalog_risks)}")
         risks.extend(nalog_risks)
         
         # Если нашли ИНН — сохраняем его для дальнейшего использования

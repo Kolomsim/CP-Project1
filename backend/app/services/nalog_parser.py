@@ -63,6 +63,8 @@ async def search_company(name: str) -> Optional[NalogCompanyInfo]:
     Returns:
         NalogCompanyInfo с данными компании или None, если не найдена
     """
+    logger.info(f"[DEBUG] search_company: ищем '{name}' в ФНС")
+    
     # Шаг 1: Отправляем поисковый запрос
     search_data = {
         "mode": "search-ul",
@@ -80,8 +82,9 @@ async def search_company(name: str) -> Optional[NalogCompanyInfo]:
         return None
     
     request_id = result.get("id")
+    logger.info(f"[DEBUG] search_company: получен request_id={request_id}")
     if not request_id:
-        logger.warning(f"Не получен request_id при поиске '{name}'")
+        logger.warning(f"[DEBUG] Не получен request_id при поиске '{name}'")
         return None
     
     # Шаг 2: Получаем результат (с повторными попытками)
@@ -99,6 +102,7 @@ async def search_company(name: str) -> Optional[NalogCompanyInfo]:
         
         # Если результат ещё не готов, response_data будет None (null в JSON)
         if response_data is not None:
+            logger.info(f"[DEBUG] search_company: получен результат на попытке {attempt+1}")
             return _parse_search_result(response_data, name)
     
     logger.warning(f"Не удалось получить результат поиска для '{name}' после 10 попыток")
@@ -125,15 +129,16 @@ def _parse_search_result(data: Dict[str, Any], query_name: str) -> Optional[Nalo
     is_active = "действующ" in status.lower()
     
     result = NalogCompanyInfo(
-        inn=company.get("inn"),
-        ogrn=company.get("ogrn"),
-        short_name=company.get("namec"),
-        full_name=company.get("namep"),
-        status=status,
-        registration_date=company.get("dtreg"),
-        region=company.get("regionname"),
-        okved=company.get("okved2mainname"),
-        is_active=is_active,
+    	inn=company.get("inn"),
+    	ogrn=company.get("ogrn"),
+    	short_name=company.get("namec"),
+    	full_name=company.get("namep"),
+    	status=status,
+    	registration_date=company.get("dtreg"),
+    	region=company.get("regionname"),
+    	okved=company.get("okved2mainname"),
+    	okved_code=company.get("okved2main"),
+    	is_active=is_active,
     )
     
     logger.info(
@@ -184,23 +189,32 @@ async def analyze_company_auto_answers(nalog_info: NalogCompanyInfo) -> Dict[str
     
     # 2. ОКВЭД (egrul-no-construction)
     if nalog_info.okved:
-        # Извлекаем код ОКВЭД (первая часть до точки, например "68.31" -> "68")
-        okved_code = nalog_info.okved.split(".")[0] if "." in nalog_info.okved else nalog_info.okved[:2]
-        # Коды строительства: 41 (строительство зданий), 42 (сооружения), 43 (специализированные)
-        is_construction = okved_code in ("41", "42", "43")
-        
-        answers["egrul-no-construction"] = {
-            "value": "yes" if not is_construction else "no",
-            "source": "ФНС (Прозрачный бизнес)",
-            "details": (
-                f"Основной вид деятельности: {nalog_info.okved} "
-                f"(код: {okved_code})"
-            ),
-        }
-        logger.info(
-            f"Авто-ответ egrul-no-construction: {'yes' if not is_construction else 'no'} "
-            f"(ОКВЭД: {nalog_info.okved}, код: {okved_code})"
-        )
+    	# Пытаемся получить код ОКВЭД: сначала из отдельного поля okved_code,
+    	# иначе извлекаем из названия (первая часть до точки, например "68.31" -> "68")
+    	raw_code = nalog_info.okved_code
+    	if raw_code:
+    		okved_code = raw_code.split(".")[0] if "." in raw_code else raw_code[:2]
+    	else:
+    		okved_code = nalog_info.okved.split(".")[0] if "." in nalog_info.okved else nalog_info.okved[:2]
+    	# Коды строительства и смежных областей:
+    	#   41 — строительство зданий
+    	#   42 — строительство инженерных сооружений
+    	#   43 — работы строительные специализированные
+    	#   71 — архитектура и инженерно-техническое проектирование
+    	is_construction = okved_code in ("41", "42", "43", "71")
+   
+    	answers["egrul-no-construction"] = {
+    		"value": "yes" if not is_construction else "no",
+    		"source": "ФНС (Прозрачный бизнес)",
+    		"details": (
+    			f"Основной вид деятельности: {nalog_info.okved} "
+    			f"(код: {okved_code})"
+    		),
+    	}
+    	logger.info(
+    		f"Авто-ответ egrul-no-construction: {'yes' if not is_construction else 'no'} "
+    		f"(ОКВЭД: {nalog_info.okved}, код: {okved_code})"
+    	)
     
     # 3. Банкротство (bankruptcy-found) — проверка по ИНН
     if nalog_info.inn:

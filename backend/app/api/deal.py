@@ -19,7 +19,7 @@ from app.models.property import PropertyInfoRequest
 from app.services.session_manager import create_session, update_session, get_session
 from app.services.property_parser import parse_property_url, ParserError as PropertyParserError
 from app.services.risk_checker import check_all_risks
-from app.services.nalog_parser import analyze_company_auto_answers
+from app.services.nalog_parser import analyze_company_auto_answers, get_company_details
 from app.api.dependencies import get_session_data
 from app.api.exceptions import BusinessError, ParserError, ExternalAPITimeoutError
 
@@ -89,10 +89,14 @@ async def get_property_preview(request: PropertyInfoRequest):
         seller_type = seller.get("type", "")
         company_name = seller.get("company_name", "")
 
+        logger.info(f"[DEBUG] property-info: seller_type={seller_type!r}, company_name={company_name!r}")
+
         if seller_type == "developer" and company_name and company_name not in ("", "Неизвестно"):
+            logger.info(f"[DEBUG] Застройщик найден, запрашиваем ФНС для {company_name}")
             try:
                 from app.services.nalog_parser import search_company as search_nalog_company
                 nalog_info = await search_nalog_company(company_name)
+                logger.info(f"[DEBUG] Результат ФНС: {nalog_info}")
                 if nalog_info:
                     # Обогащаем данные продавца информацией из ФНС
                     if nalog_info.inn:
@@ -114,7 +118,7 @@ async def get_property_preview(request: PropertyInfoRequest):
                         f"ИНН={nalog_info.inn}, статус={nalog_info.status}"
                     )
             except Exception as e:
-                logger.warning(f"Не удалось получить данные из ФНС для {company_name}: {e}")
+                logger.warning(f"[DEBUG] Не удалось получить данные из ФНС для {company_name}: {e}")
 
         # Сохраняем данные объекта в сессию
         update_session(request.session_id, {"property_data": property_data})
@@ -233,49 +237,58 @@ class DeveloperCheckResponse(BaseModel):
     summary="Получить автоматические ответы для чек-листа застройщика",
 )
 async def get_developer_check(request: DeveloperCheckRequest):
-    """
-    Анализирует данные компании из ФНС, сохранённые в сессии,
-    и возвращает автоматические ответы на вопросы чек-листа застройщика.
-    """
-    try:
-        session_data = await get_session_data(request.session_id)
-        property_data = session_data.get("property_data", {})
-        seller = property_data.get("seller", {})
-        
-        company_name = seller.get("company_name")
-        if not company_name:
-            return DeveloperCheckResponse()
-        
-        # Собираем данные из ФНС, которые уже сохранены в сессии
-        nalog_info_dict = {
-            "inn": seller.get("inn"),
-            "ogrn": seller.get("ogrn"),
-            "short_name": company_name,
-            "full_name": seller.get("full_name"),
-            "status": seller.get("nalog_status"),
-            "registration_date": seller.get("registration_date"),
-            "region": seller.get("region"),
-            "okved": seller.get("okved"),
-        }
-        
-        # Создаём NalogCompanyInfo для анализа
-        from app.models.nalog import NalogCompanyInfo
-        nalog_info = NalogCompanyInfo(**{k: v for k, v in nalog_info_dict.items() if v is not None})
-        
-        # Анализируем и получаем автоматические ответы
-        auto_answers = await analyze_company_auto_answers(nalog_info)
-        
-        return DeveloperCheckResponse(
-            company_name=company_name,
-            inn=seller.get("inn"),
-            ogrn=seller.get("ogrn"),
-            status=seller.get("nalog_status"),
-            registration_date=seller.get("registration_date"),
-            region=seller.get("region"),
-            okved=seller.get("okved"),
-            auto_answers=auto_answers,
-        )
-        
-    except Exception as e:
-        logger.error(f"Ошибка в /developer-check: {e}", exc_info=True)
-        return DeveloperCheckResponse()
+	"""
+	Анализирует данные компании из ФНС, сохранённые в сессии,
+	и возвращает автоматические ответы на вопросы чек-листа застройщика.
+	При наличии ИНН делает прямой запрос в ФНС для получения актуальных данных.
+	"""
+	try:
+		session_data = await get_session_data(request.session_id)
+		property_data = session_data.get("property_data", {})
+		seller = property_data.get("seller", {})
+		
+		company_name = seller.get("company_name")
+		if not company_name:
+			return DeveloperCheckResponse()
+		
+		# Пытаемся получить актуальные данные из ФНС по ИНН
+		inn = seller.get("inn")
+		nalog_info = None
+		if inn:
+			try:
+				nalog_info = await get_company_details(inn)
+			except Exception as e:
+				logger.warning(f"Не удалось получить данные из ФНС по ИНН {inn}: {e}")
+		
+		# Если не получили из ФНС — используем данные из сессии
+		if nalog_info is None:
+			from app.models.nalog import NalogCompanyInfo
+			nalog_info_dict = {
+				"inn": inn,
+				"ogrn": seller.get("ogrn"),
+				"short_name": company_name,
+				"full_name": seller.get("full_name"),
+				"status": seller.get("nalog_status"),
+				"registration_date": seller.get("registration_date"),
+				"region": seller.get("region"),
+				"okved": seller.get("okved"),
+			}
+			nalog_info = NalogCompanyInfo(**{k: v for k, v in nalog_info_dict.items() if v is not None})
+		
+		# Анализируем и получаем автоматические ответы
+		auto_answers = await analyze_company_auto_answers(nalog_info)
+		
+		return DeveloperCheckResponse(
+			company_name=nalog_info.short_name or company_name,
+			inn=nalog_info.inn or inn,
+			ogrn=nalog_info.ogrn or seller.get("ogrn"),
+			status=nalog_info.status or seller.get("nalog_status"),
+			registration_date=nalog_info.registration_date or seller.get("registration_date"),
+			region=nalog_info.region or seller.get("region"),
+			okved=nalog_info.okved or seller.get("okved"),
+			auto_answers=auto_answers,
+		)
+		
+	except Exception as e:
+		logger.error(f"Ошибка в /developer-check: {e}", exc_info=True)
+		return DeveloperCheckResponse()

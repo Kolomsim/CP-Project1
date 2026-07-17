@@ -8,7 +8,8 @@ export const DEVELOPER_SECTIONS: SellerSection[] = [
 		actions: [
 			{
 				id: 'dev-ddu-contract',
-				label: 'Убедился(ась), что договор — именно ДДУ, а не предварительный договор, инвестсоглашение или иной суррогат',
+				label:
+					'Убедился(ась), что договор — именно ДДУ, а не предварительный договор, инвестсоглашение или иной суррогат',
 			},
 			{
 				id: 'dev-deadlines-penalty',
@@ -34,8 +35,7 @@ export const DEVELOPER_SECTIONS: SellerSection[] = [
 	{
 		id: 'egrul',
 		title: 'Проверка 1. Выписка из ЕГРЮЛ',
-		description:
-			'Посмотрите дату регистрации компании, уставный капитал, виды деятельности и руководителей.',
+		description: 'Посмотрите дату регистрации компании, уставный капитал, виды деятельности и руководителей.',
 		actions: [
 			{
 				id: 'egrul-ordered',
@@ -78,7 +78,7 @@ export const DEVELOPER_SECTIONS: SellerSection[] = [
 			},
 			{
 				id: 'egrul-no-construction',
-				label: 'В видах деятельности нет кодов, связанных со строительством?',
+				label: 'В видах деятельности отсутствуют коды, связанные со строительством?',
 				problemAnswer: 'yes',
 				severity: 'yellow',
 				consultation:
@@ -439,8 +439,7 @@ export const FOREIGN_BUYER_SECTIONS: SellerSection[] = [
 			},
 			{
 				id: 'foreign-passport-docs',
-				label:
-					'Подготовил(а) паспорт и документы о законности пребывания в России; сделал(а) нотариальный перевод',
+				label: 'Подготовил(а) паспорт и документы о законности пребывания в России; сделал(а) нотариальный перевод',
 				links: [
 					{
 						href: 'https://notariat.ru/sovety/statiy/kopii-dublikaty-i-podlinnost-podpisi/statya/svidetelstvovanie-vernosti-perevoda-notariusom/',
@@ -465,8 +464,7 @@ export const FOREIGN_BUYER_SECTIONS: SellerSection[] = [
 			},
 			{
 				id: 'foreign-lawyer-review',
-				label:
-					'До подписания договора покажу документы юристу, который ведёт сделки с иностранными гражданами в РФ',
+				label: 'До подписания договора покажу документы юристу, который ведёт сделки с иностранными гражданами в РФ',
 				links: [{ href: '/kb', label: 'База знаний' }],
 			},
 		],
@@ -481,14 +479,12 @@ export const APARTMENT_SECTIONS: SellerSection[] = [
 		actions: [
 			{
 				id: 'apartment-egrn',
-				label:
-					'Заказал(а) выписку из ЕГРН: история переходов прав, обременения и совместная собственность',
+				label: 'Заказал(а) выписку из ЕГРН: история переходов прав, обременения и совместная собственность',
 				links: [{ href: 'https://www.gosuslugi.ru/online-egrn', label: 'ЕГРН онлайн' }],
 			},
 			{
 				id: 'apartment-land-purpose',
-				label:
-					'Уточнил(а) назначение земли и здания (жилое / коммерция) и влияние на регистрацию и перевод в жильё',
+				label: 'Уточнил(а) назначение земли и здания (жилое / коммерция) и влияние на регистрацию и перевод в жильё',
 				links: [{ href: '/kb', label: 'Квартира и апартаменты' }],
 			},
 			{
@@ -511,8 +507,7 @@ export const APARTMENT_SECTIONS: SellerSection[] = [
 			},
 			{
 				id: 'apartment-infrastructure',
-				label:
-					'Проверил(а) тарифы ЖКУ, правила пользования, требования пожарной и санитарной безопасности',
+				label: 'Проверил(а) тарифы ЖКУ, правила пользования, требования пожарной и санитарной безопасности',
 			},
 			{
 				id: 'apartment-usage-limits',
@@ -520,8 +515,7 @@ export const APARTMENT_SECTIONS: SellerSection[] = [
 			},
 			{
 				id: 'apartment-what-if',
-				label:
-					'Обсудил(а) с юристом сценарии «что если»: проблемы с застройщиком/УК и защита единственного жилья',
+				label: 'Обсудил(а) с юристом сценарии «что если»: проблемы с застройщиком/УК и защита единственного жилья',
 				links: [
 					{
 						href: 'https://www.consultant.ru/document/cons_doc_LAW_39570/a67dde7f663104e7cffeff6d926f3a3e8ac36aa2/',
