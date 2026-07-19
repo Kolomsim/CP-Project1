@@ -10,7 +10,7 @@ export default function FAQPage() {
 				<FAQContainer>
 					<FAQHeader
 						title='Часто задаваемые вопросы'
-						subtitle='Ответы на часто задаваемые вопросы о работе сервиса проверки недвижимости SmartCheck'
+						subtitle='Ответы на часто задаваемые вопросы о работе сервиса проверки недвижимости СмартЧек'
 					/>
 
 					<FAQAccordion />

@@ -1,6 +1,6 @@
 import { createTheme, type MantineColorsTuple } from '@mantine/core'
 
-/** SmartCheck mint/green — акцент, не фон всего сайта */
+/** СмартЧек mint/green — акцент, не фон всего сайта */
 const brand: MantineColorsTuple = [
 	'#f4faf0',
 	'#e2f1d1',

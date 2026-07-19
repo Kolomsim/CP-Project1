@@ -57,7 +57,7 @@ export default function HomePage() {
 
 	return (
 		<Stack gap='xl'>
-			<section className={classes.hero} aria-label='SmartCheck'>
+			<section className={classes.hero} aria-label='СмартЧек'>
 				<Stack align='center' gap='lg' className={classes.content}>
 					<Badge className={classes.badge} variant='white' size='lg' radius='xl'>
 						Проверка перед покупкой квартиры
@@ -65,7 +65,7 @@ export default function HomePage() {
 
 					<Stack align='center' gap='sm' className={classes.copy}>
 						<Title order={1} className={classes.brand}>
-							SmartCheck
+							СмартЧек
 						</Title>
 						<Text className={classes.lead}>
 							Поможем выявить особенности недвижимости и укажем, на что стоит обратить внимание при покупке,

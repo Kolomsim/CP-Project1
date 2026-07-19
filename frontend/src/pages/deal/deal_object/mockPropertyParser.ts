@@ -32,7 +32,7 @@ const SUPPORTED_PLATFORMS = [
   { pattern: /cian\.ru/i, name: 'ЦИАН' },
   { pattern: /avito\.ru/i, name: 'Авито' },
   { pattern: /domclick\.ru/i, name: 'Домклик' },
-  { pattern: /smartcheck\.ru/i, name: 'SmartCheck' },
+  { pattern: /smartcheck\.ru/i, name: 'СмартЧек' },
 ]
 
 export function isSupportedPropertyUrl(url: string): boolean {

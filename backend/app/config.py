@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 class Config:
-    APP_NAME: str = os.getenv("APP_NAME", "SmartCheck Недвижимость")
+    APP_NAME: str = os.getenv("APP_NAME", "СмартЧек Недвижимость")
     APP_VERSION: str = os.getenv("APP_VERSION", "1.0.0")
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"

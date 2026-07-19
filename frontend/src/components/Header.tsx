@@ -20,7 +20,7 @@ export function Header() {
 		<header style={{ height: '100%' }}>
 			<Group h='100%' px='md' justify='space-between'>
 				<Text component={Link} to='/' className={classes.brand}>
-					Smart<span className={classes.brandAccent}>Check</span>
+					Смарт<span className={classes.brandAccent}>Чек</span>
 				</Text>
 				<Group gap='xs'>
 					<Button
