@@ -175,6 +175,12 @@ export async function fetchFavoriteProperties(): Promise<PropertyItemResponse[]>
 	return response.properties
 }
 
+export async function refreshFavoriteProperty(propertyId: string): Promise<PropertyItemResponse> {
+	return apiRequest<PropertyItemResponse>(`/properties/${propertyId}/refresh`, {
+		method: 'POST',
+	})
+}
+
 export async function deleteFavoriteProperty(propertyId: string): Promise<void> {
 	await apiRequest<void>(`/properties/${propertyId}`, {
 		method: 'DELETE',

@@ -1,5 +1,5 @@
-import { Box, Card, Group, Stack, Text, Badge, Tooltip, ActionIcon } from '@mantine/core'
-import { IconHeart, IconHeartFilled, IconMapPin, IconBuildingSkyscraper } from '@tabler/icons-react'
+import { ActionIcon, Badge, Box, Card, Group, Loader, Stack, Text, Tooltip } from '@mantine/core'
+import { IconBuildingSkyscraper, IconHeart, IconHeartFilled, IconMapPin, IconReload } from '@tabler/icons-react'
 import type { PropertyPreview, DealRating } from '../../types/property'
 import { formatPrice, getRatingClassName } from '../../utils/format'
 import classes from './PropertyCard.module.css'
@@ -10,6 +10,8 @@ export interface PropertyCardProps {
 	isFavorite?: boolean
 	onToggleFavorite?: (id: string) => void
 	onShowMap?: (property: PropertyPreview) => void
+	onRefresh?: () => void
+	isRefreshing?: boolean
 }
 
 function stopPropagation(fn: (...args: never[]) => void, ...args: Parameters<typeof fn>) {
@@ -25,7 +27,15 @@ const ratingClassMap: Record<string, string> = {
 	ratingRed: classes.ratingHigh,
 }
 
-export function PropertyCard({ property, rating, isFavorite = false, onToggleFavorite, onShowMap }: PropertyCardProps) {
+export function PropertyCard({
+	property,
+	rating,
+	isFavorite = false,
+	onToggleFavorite,
+	onShowMap,
+	onRefresh,
+	isRefreshing = false,
+}: PropertyCardProps) {
 	const pricePerMeter = Math.round(property.price / property.total_area)
 
 	return (
@@ -122,6 +132,18 @@ export function PropertyCard({ property, rating, isFavorite = false, onToggleFav
 						aria-label='Открыть на карте'
 					>
 						<IconMapPin size={18} />
+					</ActionIcon>
+				</Tooltip>
+
+				<Tooltip label='Обновить данные с Циана'>
+					<ActionIcon
+						variant='default'
+						size='lg'
+						disabled={isRefreshing}
+						onClick={stopPropagation(() => onRefresh?.())}
+						aria-label='Обновить данные с Циана'
+					>
+						{isRefreshing ? <Loader size='xs' color='gray' /> : <IconReload size={18} />}
 					</ActionIcon>
 				</Tooltip>
 			</Stack>

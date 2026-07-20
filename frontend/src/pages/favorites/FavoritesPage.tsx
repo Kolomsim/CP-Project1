@@ -4,7 +4,7 @@ import { Alert, Box, Drawer, Loader, Stack, Text, Title, SimpleGrid } from '@man
 import { IconAlertCircle } from '@tabler/icons-react'
 import { PropertyCard } from './PropertyCard'
 import { PropertyMap } from '../../components/PropertyMap'
-import { fetchFavoriteProperties, deleteFavoriteProperty } from '../../api/deal'
+import { fetchFavoriteProperties, deleteFavoriteProperty, refreshFavoriteProperty } from '../../api/deal'
 import { mapFavoriteItem, type FavoriteItem } from './helpers'
 import type { PropertyPreview } from '../../types/property'
 
@@ -13,6 +13,7 @@ export default function FavoritesPage() {
 	const [items, setItems] = useState<FavoriteItem[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	const [refreshingId, setRefreshingId] = useState<string | null>(null)
 	const [mapOpened, setMapOpened] = useState(false)
 	const [mapProperty, setMapProperty] = useState<PropertyPreview | null>(null)
 
@@ -47,6 +48,22 @@ export default function FavoritesPage() {
 	const handleShowMap = (property: PropertyPreview) => {
 		setMapProperty(property)
 		setMapOpened(true)
+	}
+
+	const handleRefreshCian = async (propertyId: string) => {
+		setRefreshingId(propertyId)
+		setError(null)
+		try {
+			const updated = await refreshFavoriteProperty(propertyId)
+			const mapped = mapFavoriteItem(updated.id, updated.title, updated.created_at, updated.property_data)
+			if (!mapped) return
+
+			setItems(prev => prev.map(item => (item.id === propertyId ? mapped : item)))
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Не удалось обновить данные с Циана.')
+		} finally {
+			setRefreshingId(null)
+		}
 	}
 
 	return (
@@ -86,6 +103,8 @@ export default function FavoritesPage() {
 									isFavorite
 									onToggleFavorite={() => handleToggleFavorite(item.id)}
 									onShowMap={handleShowMap}
+									onRefresh={() => handleRefreshCian(item.id)}
+									isRefreshing={refreshingId === item.id}
 								/>
 							</Box>
 						))}
