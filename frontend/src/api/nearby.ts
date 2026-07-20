@@ -20,8 +20,8 @@ export type NearbyResponse = {
 }
 
 const CACHE_PREFIX = 'nearby:'
-/** 24 часа — как TTL на бэкенде */
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+/** 7 дней — переживает закрытие браузера (localStorage) */
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 type CacheEntry = {
 	data: NearbyResponse
@@ -39,32 +39,32 @@ function isValidEntry(entry: CacheEntry | undefined): entry is CacheEntry {
 	return !!entry && Date.now() <= entry.expiresAt
 }
 
-function readSessionCache(key: string): NearbyResponse | null {
+function readPersistentCache(key: string): CacheEntry | null {
 	try {
-		const raw = sessionStorage.getItem(`${CACHE_PREFIX}${key}`)
+		const raw = localStorage.getItem(`${CACHE_PREFIX}${key}`)
 		if (!raw) return null
 
 		const entry = JSON.parse(raw) as CacheEntry
 		if (!isValidEntry(entry)) {
-			sessionStorage.removeItem(`${CACHE_PREFIX}${key}`)
+			localStorage.removeItem(`${CACHE_PREFIX}${key}`)
 			return null
 		}
 
-		return entry.data
+		return entry
 	} catch {
 		return null
 	}
 }
 
-function writeSessionCache(key: string, data: NearbyResponse): void {
+function writePersistentCache(key: string, data: NearbyResponse): void {
 	try {
 		const entry: CacheEntry = {
 			data,
 			expiresAt: Date.now() + CACHE_TTL_MS,
 		}
-		sessionStorage.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify(entry))
+		localStorage.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify(entry))
 	} catch {
-		// sessionStorage недоступен или переполнен — игнорируем
+		// localStorage недоступен или переполнен — игнорируем
 	}
 }
 
@@ -78,13 +78,10 @@ function readCache(key: string): NearbyResponse | null {
 		memoryCache.delete(key)
 	}
 
-	const fromSession = readSessionCache(key)
-	if (fromSession) {
-		memoryCache.set(key, {
-			data: fromSession,
-			expiresAt: Date.now() + CACHE_TTL_MS,
-		})
-		return { ...fromSession, cached: true }
+	const fromPersistent = readPersistentCache(key)
+	if (fromPersistent) {
+		memoryCache.set(key, fromPersistent)
+		return { ...fromPersistent.data, cached: true }
 	}
 
 	return null
@@ -96,7 +93,7 @@ function writeCache(key: string, data: NearbyResponse): void {
 		expiresAt: Date.now() + CACHE_TTL_MS,
 	}
 	memoryCache.set(key, entry)
-	writeSessionCache(key, data)
+	writePersistentCache(key, data)
 }
 
 type FetchNearbyOptions = {
