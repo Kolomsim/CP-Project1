@@ -294,6 +294,12 @@ async def refresh_property_from_cian(
     if not parsed:
         raise BusinessError("Не удалось распарсить объявление с Циана.")
 
+    # Не перезаписываем сохранённые данные пустым/битым ответом парсера.
+    if not (parsed.get("price") or parsed.get("address") or parsed.get("total_area")):
+        raise BusinessError(
+            "ЦИАН вернул пустые данные (возможно captcha). Сохранённая карточка не изменена."
+        )
+
     mapped_property = _map_parsed_property_to_deal_preview(parsed)
 
     # Обновляем карточку, но если какие-то "подписи" не удалось корректно распознать,
@@ -310,6 +316,11 @@ async def refresh_property_from_cian(
 
     prop.property_data = updated_property_data
     prop.title = updated_property.get("title") or prop.title
+
+    # JSON-поле SQLAlchemy иногда не помечает изменение без flag_modified.
+    from sqlalchemy.orm.attributes import flag_modified
+
+    flag_modified(prop, "property_data")
 
     await db.flush()
 

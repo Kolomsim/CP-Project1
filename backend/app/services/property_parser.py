@@ -72,10 +72,16 @@ def _extract_property_old_from_offer(offer_data: Dict[str, Any]) -> Optional[str
 class CianListingParser:
     """Парсер для отдельных объявлений ЦИАН"""
 
+    # Chrome-профили ЦИАН часто отдаёт captcha; Safari проходит стабильнее.
+    _IMPERSONATE_PROFILES = (
+        "safari17_0",
+        "safari15_5",
+        "chrome124",
+        "chrome120",
+    )
+
     def __init__(self):
-        self.session = requests.Session(impersonate="chrome120")
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
             'Accept-Encoding': 'gzip, deflate, br',
@@ -87,14 +93,37 @@ class CianListingParser:
             'Sec-Fetch-User': '?1',
             'Cache-Control': 'max-age=0',
         }
-        self.session.headers.update(self.headers)
-    
+
+    @staticmethod
+    def _is_captcha_page(html: str) -> bool:
+        lower = html.lower()
+        if 'captcha - база объявлений циан' in lower:
+            return True
+        if '<title>captcha' in lower:
+            return True
+        # Страница объявления всегда содержит один из этих маркеров.
+        if '__next_data__' not in lower and '_cianconfig' not in lower and 'application/ld+json' not in lower:
+            if 'captcha' in lower or 'доступ ограничен' in lower:
+                return True
+        return False
+
     def parse_listing(self, url: str) -> Dict[str, Any]:
         """Парсит объявление с использованием requests"""
         try:
             html = self._fetch_page(url)
+            if self._is_captcha_page(html):
+                raise ParserError(
+                    "ЦИАН запросил проверку (captcha). Подождите минуту и попробуйте снова."
+                )
             soup = BeautifulSoup(html, 'html.parser')
-            return self._extract_data(soup, html, url)
+            data = self._extract_data(soup, html, url)
+            if not data.get('price') and not data.get('address') and not data.get('total_area'):
+                raise ParserError(
+                    "Не удалось извлечь данные объявления с ЦИАН. Попробуйте ещё раз через минуту."
+                )
+            return data
+        except ParserError:
+            raise
         except Exception as e:
             logger.error(f"Ошибка HTTP запроса или парсинга: {e}")
             raise Exception(f"Не удалось загрузить или разобрать страницу: {str(e)}")
@@ -102,15 +131,45 @@ class CianListingParser:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=8),
-        retry=retry_if_exception_message(match=".*(timed out|Timeout|Connection).*"),
+        retry=retry_if_exception_message(match=".*(timed out|Timeout|Connection|captcha).*"),
         reraise=True,
     )
     def _fetch_page(self, url: str) -> str:
-        session = requests.Session(impersonate="chrome120")
-        session.headers.update(self.headers)
-        response = session.get(url, timeout=45)
-        response.raise_for_status()
-        return response.text
+        last_error: Exception | None = None
+        captcha_html: str | None = None
+
+        for profile in self._IMPERSONATE_PROFILES:
+            try:
+                session = requests.Session(impersonate=profile)
+                session.headers.update(self.headers)
+                response = session.get(url, timeout=45)
+                response.raise_for_status()
+                html = response.text
+
+                if self._is_captcha_page(html):
+                    logger.warning("ЦИАН вернул captcha для профиля %s", profile)
+                    captcha_html = html
+                    continue
+
+                logger.info("Страница ЦИАН загружена через impersonate=%s", profile)
+                return html
+            except Exception as exc:
+                # Неподдерживаемый профиль в текущей версии curl_cffi — пробуем следующий.
+                message = str(exc).lower()
+                if "impersonat" in message and "not supported" in message:
+                    logger.debug("Профиль %s не поддерживается: %s", profile, exc)
+                    continue
+                last_error = exc
+                logger.warning("Не удалось загрузить ЦИАН через %s: %s", profile, exc)
+
+        if captcha_html is not None:
+            # Пусть верхний уровень покажет понятную ошибку captcha.
+            return captcha_html
+
+        if last_error is not None:
+            raise last_error
+
+        raise Exception("Не удалось загрузить страницу ЦИАН")
     
     def _extract_data(self, soup: BeautifulSoup, html: str, url: str) -> Dict[str, Any]:
         """Извлекает данные из HTML"""
@@ -830,13 +889,13 @@ def _parse_cian_single_listing(url: str, obj_id: str) -> Dict[str, Any]:
         "url": url,
         "title": flat_data.get("title", "Недвижимость"),
         "address": flat_data.get("address", ""),
-        "price": flat_data.get("price", 0),
-        "total_area": flat_data.get("total_area", 0.0),
-        "living_area": flat_data.get("living_area", 0.0),
-        "kitchen_area": flat_data.get("kitchen_area", 0.0),
-        "floor": flat_data.get("floor", 0),
-        "total_floors": flat_data.get("total_floors", 0),
-        "rooms": flat_data.get("rooms", 0),
+        "price": flat_data.get("price", 0) or 0,
+        "total_area": float(flat_data.get("total_area") or 0.0),
+        "living_area": float(flat_data.get("living_area") or 0.0),
+        "kitchen_area": float(flat_data.get("kitchen_area") or 0.0),
+        "floor": flat_data.get("floor", 0) or 0,
+        "total_floors": flat_data.get("total_floors", 0) or 0,
+        "rooms": flat_data.get("rooms", 0) or 0,
         "property_type": _resolve_property_type(flat_data, url),
         "deal_type": _map_deal_type_from_url(url),
         "seller": seller,
@@ -976,6 +1035,8 @@ def parse_property_url(url: str) -> Optional[Dict[str, Any]]:
             data = _parse_cian_single_listing(url, obj_id)
             logger.info(f"Успешно спарсили объект {obj_id} с ЦИАН")
             return data
+        except ParserError:
+            raise
         except Exception as e:
             logger.error(f"Ошибка парсинга ЦИАН: {e}")
             raise ParserError(f"Не удалось спарсить объект: {str(e)}")
