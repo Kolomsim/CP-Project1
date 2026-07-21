@@ -1,88 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Alert, Box, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
-import { fetchNearbyPlaces, type NearbyPlace } from '../../../api/nearby'
+import type { NearbyResponse } from '../../../api/nearby'
 import { buildTwoGisMapWithPointsSrcDoc, isValidCoordinates } from '../../../lib/map'
+import { buildPlaceMarker } from './nearbyPlaceUtils'
 
 type NearbyPlacesMapProps = {
 	lat: number
 	lon: number
 	address?: string
 	height?: number
-}
-
-function formatDistance(meters: number): string {
-	if (meters < 1000) return `${Math.round(meters)} м`
-	return `${(meters / 1000).toFixed(1)} км`
-}
-
-const TYPE_LABELS: Record<string, string> = {
-	Школа: 'Школа',
-	Гимназия: 'Гимназия',
-	Лицей: 'Лицей',
-	'Детский сад': 'Детский сад',
-	Парк: 'Парк',
-	Сквер: 'Сквер',
-	Набережная: 'Набережная',
-	'Детская площадка': 'Детская площадка',
-	'Детские площадки': 'Детская площадка',
-	Спорт: 'Спорт / фитнес',
-	Фитнес: 'Спорт / фитнес',
-	Бассейн: 'Бассейн',
-	Поликлиника: 'Поликлиника',
-	Больницы: 'Больница',
-	Больница: 'Больница',
-	Аптека: 'Аптека',
-	Супермаркет: 'Супермаркет',
-	Метро: 'Метро',
-	Остановка: 'Остановка транспорта',
-	Завод: 'Промышленный объект',
-	Фабрика: 'Промышленный объект',
-	Комбинат: 'Промышленный объект',
-	Тэц: 'ТЭЦ / котельная',
-	Котельная: 'ТЭЦ / котельная',
-	Свалка: 'Свалка / мусор',
-	Полигон: 'Свалка / полигон',
-	Бар: 'Бар / ночной клуб',
-	'Ночной клуб': 'Бар / ночной клуб',
-	Кладбище: 'Кладбище',
-	Аэропорт: 'Аэропорт',
-	'Железнодорожная станция': 'Железная дорога',
-	Депо: 'Железная дорога',
-}
-
-function escapeHtml(value: string): string {
-	return value
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;')
-}
-
-function formatPlaceType(place: NearbyPlace): string {
-	const direct = TYPE_LABELS[place.type]
-	if (direct) return direct
-
-	const lower = place.type.toLowerCase()
-	for (const [key, label] of Object.entries(TYPE_LABELS)) {
-		if (lower.includes(key.toLowerCase())) return label
-	}
-
-	if (place.category === 'bad') return 'Негативный фактор'
-	return place.type || 'Инфраструктура'
-}
-
-function buildPlaceMarker(place: NearbyPlace) {
-	const typeLabel = formatPlaceType(place)
-	const name = place.name?.trim() || 'Без названия'
-	const distance = formatDistance(place.distance_meters)
-
-	return {
-		lat: place.lat,
-		lon: place.lon,
-		tooltip: typeLabel,
-		popup: `<div class="map-popup"><div class="map-popup-type">${escapeHtml(typeLabel)}</div><div class="map-popup-name">${escapeHtml(name)}</div><div class="map-popup-distance">${distance} от объекта</div></div>`,
-	}
+	nearbyData?: NearbyResponse | null
+	loading?: boolean
+	error?: string | null
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
@@ -104,42 +34,25 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 	)
 }
 
-export function NearbyPlacesMap({ lat, lon, address, height = 320 }: NearbyPlacesMapProps) {
-	const [loading, setLoading] = useState(true)
-	const [error, setError] = useState<string | null>(null)
-	const [goodCount, setGoodCount] = useState(0)
-	const [badCount, setBadCount] = useState(0)
-	const [goodPoints, setGoodPoints] = useState<{ lat: number; lon: number; tooltip: string; popup: string }[]>([])
-	const [badPoints, setBadPoints] = useState<{ lat: number; lon: number; tooltip: string; popup: string }[]>([])
+export function NearbyPlacesMap({
+	lat,
+	lon,
+	address,
+	height = 320,
+	nearbyData = null,
+	loading = false,
+	error = null,
+}: NearbyPlacesMapProps) {
+	const hasValidCoords = isValidCoordinates(lat, lon)
+	const resolvedError = !hasValidCoords ? 'Координаты объекта неизвестны' : error
 
-	useEffect(() => {
-		if (!isValidCoordinates(lat, lon)) {
-			setLoading(false)
-			setError('Координаты объекта неизвестны')
-			return
-		}
-
-		const load = async () => {
-			setLoading(true)
-			setError(null)
-			try {
-				const data = await fetchNearbyPlaces(lat, lon)
-				setGoodCount(data.total_good)
-				setBadCount(data.total_bad)
-				setGoodPoints(data.good.map(buildPlaceMarker))
-				setBadPoints(data.bad.map(buildPlaceMarker))
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Не удалось загрузить окружение объекта.')
-			} finally {
-				setLoading(false)
-			}
-		}
-
-		void load()
-	}, [lat, lon])
+	const goodCount = nearbyData?.total_good ?? 0
+	const badCount = nearbyData?.total_bad ?? 0
+	const goodPoints = useMemo(() => nearbyData?.good.map(buildPlaceMarker) ?? [], [nearbyData?.good])
+	const badPoints = useMemo(() => nearbyData?.bad.map(buildPlaceMarker) ?? [], [nearbyData?.bad])
 
 	const srcDoc = useMemo(() => {
-		if (loading || error) return null
+		if (loading || resolvedError || !nearbyData) return null
 		return buildTwoGisMapWithPointsSrcDoc({
 			lat,
 			lon,
@@ -147,7 +60,7 @@ export function NearbyPlacesMap({ lat, lon, address, height = 320 }: NearbyPlace
 			goodPoints,
 			badPoints,
 		})
-	}, [lat, lon, address, goodPoints, badPoints, loading, error])
+	}, [lat, lon, address, goodPoints, badPoints, loading, resolvedError, nearbyData])
 
 	return (
 		<Paper withBorder radius='md' p='md'>
@@ -155,8 +68,9 @@ export function NearbyPlacesMap({ lat, lon, address, height = 320 }: NearbyPlace
 				<div>
 					<Title order={4}>Окружение на карте</Title>
 					<Text size='sm' c='dimmed'>
-						Зелёные точки — всё, что делает жизнь удобной и повышает ликвидность жилья. Красные точки — Возможен дискомфорт: шум, запахи или загрязнение. Рекомендуется обратить внимание.
-						Наведитесь на точку — увидите тип объекта, нажмите — подробности.
+						Зелёные точки — всё, что делает жизнь удобной и повышает ликвидность жилья. Красные точки — возможен
+						дискомфорт: шум, запахи или загрязнение. Рекомендуется обратить внимание. Наведитесь на точку — увидите
+						тип объекта, нажмите — подробности.
 					</Text>
 				</div>
 
@@ -169,13 +83,13 @@ export function NearbyPlacesMap({ lat, lon, address, height = 320 }: NearbyPlace
 					</Stack>
 				)}
 
-				{error && !loading && (
+				{resolvedError && !loading && (
 					<Alert icon={<IconAlertCircle size={16} />} color='red' variant='light' title='Карта недоступна'>
-						{error}
+						{resolvedError}
 					</Alert>
 				)}
 
-				{!loading && !error && srcDoc && (
+				{!loading && !resolvedError && srcDoc && (
 					<>
 						<Group gap='md'>
 							<LegendItem color='#1c7ed6' label={`Объект (${address ?? 'выбранный'})`} />

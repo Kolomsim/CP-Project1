@@ -8,6 +8,7 @@ export type NearbyPlace = {
 	distance_meters: number
 	lat: number
 	lon: number
+	consequence?: string | null
 }
 
 export type NearbyResponse = {

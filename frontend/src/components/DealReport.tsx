@@ -11,6 +11,8 @@ import type { DealCheckResult, DealRisk } from '../pages/deal/deal_result/types'
 import type { ChecklistFinding, ChecklistReport } from '../pages/deal/deal_checklist/types'
 import { severityColor } from '../pages/deal/deal_checklist/utils'
 import { NearbyPlacesMap } from '../pages/deal/deal_result/NearbyPlacesMap'
+import { NearbyBadPointsList } from '../pages/deal/deal_result/NearbyBadPointsList'
+import { useNearbyPlaces } from '../pages/deal/deal_result/useNearbyPlaces'
 
 type DealReportProps = {
 	result: DealCheckResult
@@ -175,6 +177,9 @@ export default function DealReport({
 	const [saved, setSaved] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
 
+	const nearby = useNearbyPlaces(result.property.location.lat, result.property.location.lon)
+	const badNearbyPlaces = nearby.data?.bad ?? []
+
 	const overallColor = getOverallColor(result, checklistReport)
 	const overallLabel = getOverallLabel(result, checklistReport)
 	const overallTitle = getOverallTitle(result, checklistReport)
@@ -295,7 +300,9 @@ export default function DealReport({
 						</Stack>
 					)}
 
-					{allFindings.length === 0 && (
+					{!nearby.loading && badNearbyPlaces.length > 0 && <NearbyBadPointsList places={badNearbyPlaces} />}
+
+					{allFindings.length === 0 && !nearby.loading && badNearbyPlaces.length === 0 && (
 						<Text size='sm' c='dimmed'>
 							Критических особенностей не обнаружено.
 						</Text>
@@ -308,6 +315,9 @@ export default function DealReport({
 				lat={result.property.location.lat}
 				lon={result.property.location.lon}
 				address={result.property.address}
+				nearbyData={nearby.data}
+				loading={nearby.loading}
+				error={nearby.error}
 			/>
 
 			{showSaveButton && (

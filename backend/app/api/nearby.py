@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query, Request
 from app.api.exceptions import BusinessError
 from app.config import config
 from app.models.property import NearbyPlace, NearbyResponse
-from app.services.classifier import classify_place, get_place_type
+from app.services.classifier import classify_place, get_place_consequence, get_place_type
 from app.services.dgis import DEFAULT_PLACE_TYPES, fetch_nearby_dgis
 from app.services.redis_client import cache_get, cache_set
 
@@ -107,14 +107,17 @@ async def fetch_nearby_2gis(
 
     good, bad = [], []
     for item, category in unique.values():
+        place_type = get_place_type(item.get("rubrics", []))
+        distance = round(item["distance"], 1)
         place = NearbyPlace(
             name=item["name"],
             address=item.get("address", ""),
             category=category,
-            type=get_place_type(item.get("rubrics", [])),
-            distance_meters=round(item["distance"], 1),
+            type=place_type,
+            distance_meters=distance,
             lat=item["lat"],
             lon=item["lon"],
+            consequence=get_place_consequence(place_type, distance, category),
         )
         if place.type != "other":
             if category == "good":

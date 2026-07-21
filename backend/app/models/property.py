@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, HttpUrl
-from typing import List, Optional
+from typing import List, Optional, Optional
 
 # Запрос = ссылка на объект недвижимости
 class PropertyInfoRequest(BaseModel):
@@ -74,6 +74,7 @@ class NearbyPlace(BaseModel):
     distance_meters: float
     lat: float
     lon: float
+    consequence: Optional[str] = None
 
 
 class NearbyResponse(BaseModel):

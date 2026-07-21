@@ -83,7 +83,8 @@ function buildLeafletMapHtml(options: {
       margin-bottom: 4px;
     }
     .map-popup-name { color: #495057; margin-bottom: 2px; }
-    .map-popup-distance { color: #868e96; font-size: 12px; }
+    .map-popup-distance { color: #868e96; font-size: 12px; margin-bottom: 4px; }
+    .map-popup-consequence { color: #c92a2a; font-size: 12px; margin-top: 4px; }
     #fallback {
       display: none; box-sizing: border-box; height: 100%; padding: 16px;
       font: 14px/1.4 system-ui, sans-serif; color: #6b7280;
