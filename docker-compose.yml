@@ -19,6 +19,20 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: cp-redis
+    ports:
+      - '6379:6379'
+    restart: unless-stopped
+    networks:
+      - cp-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -36,9 +50,13 @@ services:
       - RELOAD=False
       - DATABASE_URL=postgresql+asyncpg://smartcheck:smartcheck_secret@postgres:5432/smartcheck
       - JWT_SECRET_KEY=smartcheck-jwt-secret-key-change-in-production-2026
+      - USE_REDIS=True
+      - REDIS_URL=redis://redis:6379/0
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - cp-network
