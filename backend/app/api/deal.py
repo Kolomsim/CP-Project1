@@ -163,6 +163,10 @@ async def check_risks(session_id: str):
         company_name = seller.get("company_name")
         cadastral_number = property_data.get("cadastral_number")  # может быть None
 
+        # Логируем данные для отладки
+        logger.info(f"[DEBUG] Данные для проверки рисков: address={address!r}, seller_name={seller_name!r}, inn={inn!r}, company_name={company_name!r}")
+        logger.info(f"[DEBUG] Данные продавца: seller={seller!r}")
+
         # Запускаем асинхронную проверку всех рисков
         try:
             result = await check_all_risks(
@@ -179,6 +183,23 @@ async def check_risks(session_id: str):
             raise ExternalAPITimeoutError("проверка рисков")
 
         # Добавляем детали объекта в ответ
+        # Формируем информацию о продавце только если это не физическое лицо
+        seller_info = None
+        seller_type = seller.get("type", "")
+        if seller_type and seller_type != "owner" and seller_type != "individual" and seller_type != "private":
+            seller_info = {
+                "name": seller.get("name"),
+                "type": seller.get("type"),
+                "company_name": seller.get("company_name"),
+                "inn": seller.get("inn"),
+                "ogrn": seller.get("ogrn"),
+                "full_name": seller.get("full_name"),
+                "nalog_status": seller.get("nalog_status"),
+                "registration_date": seller.get("registration_date"),
+                "region": seller.get("region"),
+                "okved": seller.get("okved"),
+            }
+        
         result["property_details"] = {
             "address": address,
             "price": property_data.get("price"),
@@ -191,6 +212,7 @@ async def check_risks(session_id: str):
             "deal_type": property_data.get("deal_type"),
             "market_category": property_data.get("market_category") or property_data.get("property_old"),
             "seller": seller_name,
+            "seller_info": seller_info,
         }
 
         # Сохраняем результат в сессию (на всякий случай)
@@ -237,58 +259,64 @@ class DeveloperCheckResponse(BaseModel):
     summary="Получить автоматические ответы для чек-листа застройщика",
 )
 async def get_developer_check(request: DeveloperCheckRequest):
-	"""
-	Анализирует данные компании из ФНС, сохранённые в сессии,
-	и возвращает автоматические ответы на вопросы чек-листа застройщика.
-	При наличии ИНН делает прямой запрос в ФНС для получения актуальных данных.
-	"""
-	try:
-		session_data = await get_session_data(request.session_id)
-		property_data = session_data.get("property_data", {})
-		seller = property_data.get("seller", {})
-		
-		company_name = seller.get("company_name")
-		if not company_name:
-			return DeveloperCheckResponse()
-		
-		# Пытаемся получить актуальные данные из ФНС по ИНН
-		inn = seller.get("inn")
-		nalog_info = None
-		if inn:
-			try:
-				nalog_info = await get_company_details(inn)
-			except Exception as e:
-				logger.warning(f"Не удалось получить данные из ФНС по ИНН {inn}: {e}")
-		
-		# Если не получили из ФНС — используем данные из сессии
-		if nalog_info is None:
-			from app.models.nalog import NalogCompanyInfo
-			nalog_info_dict = {
-				"inn": inn,
-				"ogrn": seller.get("ogrn"),
-				"short_name": company_name,
-				"full_name": seller.get("full_name"),
-				"status": seller.get("nalog_status"),
-				"registration_date": seller.get("registration_date"),
-				"region": seller.get("region"),
-				"okved": seller.get("okved"),
-			}
-			nalog_info = NalogCompanyInfo(**{k: v for k, v in nalog_info_dict.items() if v is not None})
-		
-		# Анализируем и получаем автоматические ответы
-		auto_answers = await analyze_company_auto_answers(nalog_info)
-		
-		return DeveloperCheckResponse(
-			company_name=nalog_info.short_name or company_name,
-			inn=nalog_info.inn or inn,
-			ogrn=nalog_info.ogrn or seller.get("ogrn"),
-			status=nalog_info.status or seller.get("nalog_status"),
-			registration_date=nalog_info.registration_date or seller.get("registration_date"),
-			region=nalog_info.region or seller.get("region"),
-			okved=nalog_info.okved or seller.get("okved"),
-			auto_answers=auto_answers,
-		)
-		
-	except Exception as e:
-		logger.error(f"Ошибка в /developer-check: {e}", exc_info=True)
-		return DeveloperCheckResponse()
+    """
+    Анализирует данные компании из ФНС, сохранённые в сессии.
+    Если продавцом является физлицо (вторичка), возвращает пустой DeveloperCheckResponse без ошибок.
+    """
+    try:
+        session_data = await get_session_data(request.session_id)
+        property_data = session_data.get("property_data", {})
+        seller = property_data.get("seller", {})
+        
+        company_name = seller.get("company_name")
+        market_category = property_data.get("market_category") or property_data.get("property_old") or ""
+        is_primary_market = "новостр" in market_category.lower() or "первич" in market_category.lower()
+
+        # ФНС нужен только для новостроек (режим чек-листа застройщика)
+        if not is_primary_market:
+            return DeveloperCheckResponse(auto_answers={})
+
+        if not company_name or company_name in ("", "Неизвестно"):
+            return DeveloperCheckResponse(auto_answers={})
+
+        inn = seller.get("inn")
+        nalog_info = None
+        if inn:
+            try:
+                nalog_info = await get_company_details(inn)
+            except Exception as e:
+                logger.warning(f"Не удалось получить данные из ФНС по ИНН {inn}: {e}")
+
+        if nalog_info is None and (company_name or inn):
+            from app.models.nalog import NalogCompanyInfo
+            nalog_info_dict = {
+                "inn": inn,
+                "ogrn": seller.get("ogrn"),
+                "short_name": company_name,
+                "full_name": seller.get("full_name"),
+                "status": seller.get("nalog_status"),
+                "registration_date": seller.get("registration_date"),
+                "region": seller.get("region"),
+                "okved": seller.get("okved"),
+            }
+            # Убираем None значения
+            clean_dict = {k: v for k, v in nalog_info_dict.items() if v is not None}
+            if clean_dict:
+                nalog_info = NalogCompanyInfo(**clean_dict)
+
+        auto_answers = await analyze_company_auto_answers(nalog_info) if nalog_info else {}
+
+        return DeveloperCheckResponse(
+            company_name=nalog_info.short_name if nalog_info else company_name,
+            inn=nalog_info.inn if nalog_info else inn,
+            ogrn=nalog_info.ogrn if nalog_info else seller.get("ogrn"),
+            status=nalog_info.status if nalog_info else seller.get("nalog_status"),
+            registration_date=nalog_info.registration_date if nalog_info else seller.get("registration_date"),
+            region=nalog_info.region if nalog_info else seller.get("region"),
+            okved=nalog_info.okved if nalog_info else seller.get("okved"),
+            auto_answers=auto_answers,
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка в /developer-check: {e}", exc_info=True)
+        return DeveloperCheckResponse(auto_answers={})

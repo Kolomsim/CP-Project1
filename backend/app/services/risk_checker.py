@@ -27,6 +27,15 @@ def _field_value(value: Any) -> str:
     return str(value)
 
 
+def _is_primary_market(property_data: Optional[Dict[str, Any]]) -> bool:
+    """Первичный рынок (новостройка) — тот же критерий, что и чек-лист застройщика на фронте."""
+    if not property_data:
+        return False
+    market_category = property_data.get("market_category") or property_data.get("property_old") or ""
+    value = str(market_category).lower()
+    return "новостр" in value or "первич" in value
+
+
 async def check_all_risks(
     address: str,
     seller_name: str,
@@ -63,13 +72,21 @@ async def check_all_risks(
     else:
         tasks.append(asyncio.sleep(0, result=None))
 
-    # 3. Проверка компании в ФНС (для застройщиков)
-    logger.info(f"[DEBUG] check_all_risks: company_name={company_name!r}, inn={inn!r}")
-    if company_name and company_name not in ("", "Неизвестно"):
+    # 3. Проверка компании в ФНС — только для новостроек (чек-лист застройщика)
+    should_check_nalog = (
+        company_name
+        and company_name not in ("", "Неизвестно")
+        and _is_primary_market(property_data)
+    )
+    logger.info(
+        f"[DEBUG] check_all_risks: company_name={company_name!r}, "
+        f"primary_market={_is_primary_market(property_data)}, should_check_nalog={should_check_nalog}"
+    )
+    if should_check_nalog:
         logger.info(f"[DEBUG] Запускаем проверку компании в ФНС: {company_name}")
         tasks.append(_check_company_nalog(company_name))
     else:
-        logger.info(f"[DEBUG] Пропускаем проверку ФНС: company_name={company_name!r}")
+        logger.info("[DEBUG] Пропускаем проверку ФНС (не новостройка или нет названия компании)")
         tasks.append(asyncio.sleep(0, result=None))
 
     # 4. Аресты (если есть кадастровый номер)

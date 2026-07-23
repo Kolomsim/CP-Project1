@@ -50,12 +50,16 @@ function pageDescription(mode: 'developer' | 'seller' | null, hasExtras: boolean
 export default function DealChecklistPage() {
 	const property = getDealPropertyPreview<PropertyPreview>()
 	const citizenship = getDealBuyerCitizenship()
+
+	// Определяем тип чек-листа по категории недвижимости
 	const mode = property?.marketCategory ? resolveMode(property.marketCategory) : null
+
 	const showForeign = isForeignCitizenship(citizenship)
 	const showApartment = isApartmentProperty(
 		property?.propertyType,
 		property ? `${property.title} ${property.description} ${property.address}` : null,
 	)
+
 	const extraSections = useMemo(
 		() => getExtraSections({ foreign: showForeign, apartment: showApartment }),
 		[showForeign, showApartment],
@@ -75,9 +79,13 @@ export default function DealChecklistPage() {
 	const [autoLoading, setAutoLoading] = useState(false)
 	const [autoError, setAutoError] = useState<string | null>(null)
 
-	// Загружаем авто-ответы из ФНС при монтировании для режима застройщика
+	// Загружаем авто-ответы из ФНС ТОЛЬКО для режима застройщика
 	useEffect(() => {
-		if (mode !== 'developer') return
+		if (mode !== 'developer') {
+			setAutoError(null)
+			setAutoLoading(false)
+			return
+		}
 
 		let cancelled = false
 		setAutoLoading(true)
@@ -86,22 +94,23 @@ export default function DealChecklistPage() {
 		fetchDeveloperCheck()
 			.then(data => {
 				if (!cancelled) {
-					setAutoAnswers(data.auto_answers)
-					// Автоматически применяем авто-ответы, если пользователь ещё не выбрал ответ
-					setAnswers(prev => {
-						const next = { ...prev }
-						let changed = false
-						for (const [qId, aa] of Object.entries(data.auto_answers)) {
-							if (next.questions[qId] === undefined || next.questions[qId] === null) {
-								next.questions = { ...next.questions, [qId]: aa.value }
-								changed = true
+					if (data && data.auto_answers) {
+						setAutoAnswers(data.auto_answers)
+						setAnswers(prev => {
+							const next = { ...prev }
+							let changed = false
+							for (const [qId, aa] of Object.entries(data.auto_answers)) {
+								if (next.questions[qId] === undefined || next.questions[qId] === null) {
+									next.questions = { ...next.questions, [qId]: aa.value }
+									changed = true
+								}
 							}
-						}
-						if (changed) {
-							saveDealChecklistAnswers(next)
-						}
-						return next
-					})
+							if (changed) {
+								saveDealChecklistAnswers(next)
+							}
+							return next
+						})
+					}
 				}
 			})
 			.catch(err => {
