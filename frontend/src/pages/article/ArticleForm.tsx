@@ -69,6 +69,9 @@ export default function ArticleForm({ initialValues, isEditMode, saving, error, 
 					<Text size='sm' fw={500}>
 						Markdown
 					</Text>
+					<Text size='sm' c='dimmed'>
+						Инструкция по Markdown: https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
+					</Text>
 					<Textarea
 						placeholder='Введите текст в формате Markdown...'
 						value={content}

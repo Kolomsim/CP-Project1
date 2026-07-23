@@ -9,6 +9,7 @@ SUPPORTED_PLATFORMS = {
 }
 
 def _normalize_url(url: str) -> str:
+    """Нормализует URL-адрес."""
     value = str(url).strip()
     if value and not value.startswith(("http://", "https://")):
         value = f"https://{value}"
@@ -31,7 +32,6 @@ def validate_url(url: str) -> bool:
     
     if not parsed.scheme or not parsed.netloc:
         return False  
-      
 
     netloc = parsed.netloc.lower()
 
@@ -67,10 +67,12 @@ def detect_platform(url: str) -> str | None:
 
 
 def extract_id_cian(url: str) -> str | None:
+    """Извлекает ID объекта с ЦИАН."""
     m = re.search(r'/sale/(?:flat|room|house|land)/([0-9]+)', url)
     return m.group(1) if m else None
   
 def extract_id_domclick(url: str) -> str | None:
+    """Извлекает ID объекта с Домклик."""
     m = re.search(r'/card/sale__flat__([0-9]+)', url)
     return m.group(1) if m else None
 
@@ -88,6 +90,7 @@ def extract_id_domclick(url: str) -> str | None:
 #     return None
 
 def extract_id_from_url(url: str) -> str | None:
+    """Извлекает ID объекта из URL."""
     if not url:
         return None
 
@@ -100,6 +103,7 @@ def extract_id_from_url(url: str) -> str | None:
       return None
 
 def validate_phone(phone: str) -> bool:
+    """Проверяет корректность номера телефона."""
     try:
         num = phonenumbers.parse(phone, None)  # регион определяется автоматически
         return phonenumbers.is_valid_number(num)
@@ -107,6 +111,6 @@ def validate_phone(phone: str) -> bool:
         return False
 
 
-
 def validate_name(name: str) -> bool:
+    """Проверяет корректность имени пользователя."""
     return bool(name and re.match(r'^[а-яА-Яa-zA-Z\s\-]+$', name))

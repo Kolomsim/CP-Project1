@@ -15,7 +15,7 @@
 	margin-right: -50vw;
 	margin-top: calc(-1 * var(--mantine-spacing-md));
 	margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
-	padding: clamp(3.5rem, 8vw, 6.5rem) 1.25rem clamp(4.5rem, 10vw, 7rem);
+	padding: clamp(1.5rem, 4vw, 3rem) 1.25rem clamp(2rem, 5vw, 4rem);
 	background: linear-gradient(180deg, var(--home-bg) 0%, var(--home-bg) 55%, #eef6e4 78%, var(--sc-page) 100%);
 	border-bottom: 1px solid var(--sc-border);
 	text-align: center;

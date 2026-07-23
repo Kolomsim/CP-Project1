@@ -11,6 +11,7 @@ _sessions: Dict[str, Dict[str, Any]] = {}
 SESSION_TTL = timedelta(minutes=30)
 
 def create_session() -> str:
+    """Создает новую сессию."""
     session_id = str(uuid.uuid4())
     _sessions[session_id] = {
         "created_at": datetime.now(),
@@ -47,6 +48,7 @@ def update_session(session_id: str, data: Dict[str, Any]) -> bool:
     return True
 
 def delete_session(session_id: str) -> bool:
+    """Удаляет сессию."""
     if session_id in _sessions:
         del _sessions[session_id]
         return True

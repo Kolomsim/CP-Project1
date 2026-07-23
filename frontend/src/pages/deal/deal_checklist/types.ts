@@ -16,6 +16,7 @@ export type SellerQuestion = {
 	consultation: string
 	/** Default: red */
 	severity?: FlagSeverity
+	links?: { href: string; label: string }[]
 }
 
 export type SellerSection = {
@@ -38,6 +39,7 @@ export type ChecklistFinding = {
 	label: string
 	severity: FlagSeverity
 	consultation: string
+	links?: { href: string; label: string }[]
 }
 
 export type ChecklistReport = {

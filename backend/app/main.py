@@ -29,19 +29,19 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Инициализация и завершение работы приложения."""
-    logger.info("Starting up...")
+    logger.info("Запуск приложения...")
     await init_db()
 
     app.state.dgis_client = httpx.AsyncClient(timeout=10.0)
-    logger.info("2GIS client initialized successfully.")
+    logger.info("Клиент 2GIS успешно инициализирован.")
 
     yield
 
-    logger.info("Shutting down...")
+    logger.info("Остановка приложения...")
     await close_db()
 
     await app.state.dgis_client.aclose()
-    logger.info("2GIS HTTP client closed successfully.")
+    logger.info("HTTP клиент 2GIS успешно закрыт.")
 
 
 app = FastAPI(

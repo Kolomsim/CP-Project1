@@ -4,7 +4,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-# Load backend/.env regardless of process cwd (needed on PythonAnywhere)
+# Загрузка .env файла из папки backend
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 class Config:
@@ -17,13 +17,13 @@ class Config:
     PORT: int = int(os.getenv("PORT", 8000))
     RELOAD: bool = os.getenv("RELOAD", "True").lower() == "true"
 
-    # Database
+    # База данных
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
         "postgresql+asyncpg://smartcheck:smartcheck_secret@localhost:5432/smartcheck",
     )
 
-    # JWT Auth
+    # JWT аутентификация
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "smartcheck-jwt-secret-key-change-in-production-2026")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 60))

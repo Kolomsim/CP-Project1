@@ -39,9 +39,20 @@ function FindingItem({ finding }: { finding: ChecklistFinding }) {
 						{finding.severity === 'red' ? 'Красный флаг' : 'Жёлтый флаг'}
 					</Badge>
 				</Group>
-				<Text size='sm' className={classes.consultationText}>
-					{finding.consultation}
-				</Text>
+				<div className={classes.consultationText}>
+					<Text size='sm'>{finding.consultation}</Text>
+					{'links' in finding && (finding as any).links?.length > 0 && (
+						<Stack gap={4} mt='xs'>
+							{(finding as any).links.map((lnk: { href: string; label: string }, idx: number) => (
+								<Text key={idx} size='xs'>
+									<a href={lnk.href} target='_blank' rel='noopener noreferrer'>
+										{lnk.label}
+									</a>
+								</Text>
+							))}
+						</Stack>
+					)}
+				</div>
 			</Stack>
 		</Paper>
 	)

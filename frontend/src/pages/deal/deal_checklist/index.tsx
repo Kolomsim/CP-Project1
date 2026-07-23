@@ -208,12 +208,23 @@ export default function DealChecklistPage() {
 			)}
 
 			{mode === 'developer' && (
-				<DeveloperChecklist
-					answers={answers}
-					onActionToggle={handleActionToggle}
-					onQuestionChange={handleQuestionChange}
-					autoAnswers={autoAnswers ?? undefined}
-				/>
+				<>
+					<Paper withBorder radius='md' p='md' mb='md'>
+						<Title order={3} mb='xs'>
+							Информация о застройщике
+						</Title>
+						<Text size='sm'>
+							{property?.seller?.name ? `Имя застройщика: ${property.seller.name}` : 'Имя застройщика не указано'}
+						</Text>
+						{property?.seller?.inn && <Text size='sm'>ИНН застройщика: {property.seller.inn}</Text>}
+					</Paper>
+					<DeveloperChecklist
+						answers={answers}
+						onActionToggle={handleActionToggle}
+						onQuestionChange={handleQuestionChange}
+						autoAnswers={autoAnswers ?? undefined}
+					/>
+				</>
 			)}
 
 			{mode === 'seller' && (
@@ -259,7 +270,7 @@ export default function DealChecklistPage() {
 			)}
 
 			<Button component={Link} to='/deal/deal_result' size='md'>
-				Продолжить к отчёту
+				Перейти к отчёту
 			</Button>
 		</Stack>
 	)

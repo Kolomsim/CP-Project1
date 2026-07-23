@@ -25,7 +25,11 @@ export default function RegisterForm({
 
 	return (
 		<form onSubmit={handleSubmit}>
-			<Input.Wrapper label='Логин' description='Создаётся автоматически и не может быть изменён'>
+			<Input.Wrapper
+				label='Логин'
+				description='Создаётся автоматически и не может быть изменён. Сохраните его, чтобы позже войти в аккаунт.'
+				mt='md'
+			>
 				<Box
 					px='sm'
 					h={36}

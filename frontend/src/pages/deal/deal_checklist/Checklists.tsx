@@ -108,9 +108,20 @@ function QuestionBlock({
 				</Group>
 
 				{isProblem && (
-					<Text size='sm' c='dimmed' className={classes.consultation}>
-						{question.consultation}
-					</Text>
+					<div className={classes.consultation}>
+						<Text size='sm'>{question.consultation}</Text>
+						{question.links && question.links.length > 0 && (
+							<Stack gap={4} mt='xs'>
+								{question.links.map((link, index) => (
+									<Text key={index} size='xs'>
+										<Anchor href={link.href} target='_blank' rel='noopener noreferrer'>
+											{link.label}
+										</Anchor>
+									</Text>
+								))}
+							</Stack>
+						)}
+					</div>
 				)}
 			</Stack>
 		</Paper>

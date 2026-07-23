@@ -20,6 +20,7 @@ export type PropertyPreview = {
 		phone?: string
 		type?: string
 		company_name?: string
+		inn?: string
 	}
 	location: {
 		lat: number

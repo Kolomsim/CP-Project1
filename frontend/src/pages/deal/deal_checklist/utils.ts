@@ -35,18 +35,12 @@ export function isForeignCitizenship(citizenship: string | null | undefined): bo
 	return value === 'foreign' || (value !== 'russian' && value !== 'россия' && value !== 'российская федерация')
 }
 
-export function isApartmentProperty(
-	propertyType: string | null | undefined,
-	searchText?: string | null,
-): boolean {
+export function isApartmentProperty(propertyType: string | null | undefined, searchText?: string | null): boolean {
 	const haystack = `${propertyType ?? ''} ${searchText ?? ''}`.toLowerCase()
 	return haystack.includes('апартамент') || haystack.includes('apartment')
 }
 
-export function getExtraSections(options: {
-	foreign: boolean
-	apartment: boolean
-}): SellerSection[] {
+export function getExtraSections(options: { foreign: boolean; apartment: boolean }): SellerSection[] {
 	const sections: SellerSection[] = []
 	if (options.foreign) sections.push(...FOREIGN_BUYER_SECTIONS)
 	if (options.apartment) sections.push(...APARTMENT_SECTIONS)
@@ -106,6 +100,7 @@ function collectSectionFindings(sections: SellerSection[], answers: ChecklistAns
 				label: question.label,
 				severity: question.severity ?? 'red',
 				consultation: question.consultation,
+				links: (question as SellerQuestion).links ?? undefined,
 			})
 		}
 	}
@@ -113,7 +108,10 @@ function collectSectionFindings(sections: SellerSection[], answers: ChecklistAns
 	return findings
 }
 
-function countActions(sections: SellerSection[], answers: ChecklistAnswers): {
+function countActions(
+	sections: SellerSection[],
+	answers: ChecklistAnswers,
+): {
 	checkedActions: number
 	totalActions: number
 } {
@@ -139,8 +137,7 @@ export function getChecklistVerdict(
 	let yellowCount = 0
 	let answered = 0
 
-	const modeSections =
-		mode === 'developer' ? DEVELOPER_SECTIONS : mode === 'seller' ? SELLER_SECTIONS : []
+	const modeSections = mode === 'developer' ? DEVELOPER_SECTIONS : mode === 'seller' ? SELLER_SECTIONS : []
 
 	if (modeSections.length > 0) {
 		const risks = countQuestionRisks(modeSections, answers)
@@ -187,13 +184,9 @@ export function buildChecklistReport(options: {
 	}
 
 	const answers = options.answers ?? emptyChecklistAnswers()
-	const modeSections =
-		mode === 'developer' ? DEVELOPER_SECTIONS : mode === 'seller' ? SELLER_SECTIONS : []
+	const modeSections = mode === 'developer' ? DEVELOPER_SECTIONS : mode === 'seller' ? SELLER_SECTIONS : []
 
-	const findings = [
-		...collectSectionFindings(modeSections, answers),
-		...collectSectionFindings(extraSections, answers),
-	]
+	const findings = [...collectSectionFindings(modeSections, answers), ...collectSectionFindings(extraSections, answers)]
 
 	const { checkedActions, totalActions } = countActions([...modeSections, ...extraSections], answers)
 	const summary = getChecklistVerdict(mode, answers, extraSections)

@@ -15,7 +15,18 @@ export default function AuthPage() {
 	const [loadingUsername, setLoadingUsername] = useState(false)
 	const [loading, setLoading] = useState(false)
 	const navigate = useNavigate()
-	const { login, register, isAuthenticated } = useAuth()
+	const { login, register, isAuthenticated, user } = useAuth()
+	const [redirectAfterLogin, setRedirectAfterLogin] = useState(false)
+
+	useEffect(() => {
+		if (redirectAfterLogin && user) {
+			if (user.role === 'author') {
+				navigate('/kb')
+			} else {
+				navigate('/home')
+			}
+		}
+	}, [redirectAfterLogin, user, navigate])
 
 	const loadSuggestedUsername = useCallback(async () => {
 		setLoadingUsername(true)
@@ -46,7 +57,8 @@ export default function AuthPage() {
 		setLoading(true)
 		try {
 			await login(values.username, values.password)
-			navigate('/home')
+			// Устанавливаем флаг для перенаправления после входа
+			setRedirectAfterLogin(true)
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Произошла ошибка')
 		} finally {

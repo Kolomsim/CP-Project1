@@ -26,7 +26,6 @@ from app.services.auth import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
-
 security = HTTPBearer(auto_error=False)
 
 
@@ -53,6 +52,26 @@ async def get_current_user_id(
     return payload["sub"]
 
 
+def _create_user_response(user):
+    """Создает ответ для пользователя."""
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        role=user.role,
+        created_at=user.created_at,
+    )
+
+
+def _create_token_response(user, access_token, refresh_token):
+    """Создает ответ с токенами и информацией о пользователе."""
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=_create_user_response(user),
+    )
+
+
 @router.get("/suggest-username", response_model=SuggestUsernameResponse)
 async def get_suggest_username(db: AsyncSession = Depends(get_db)):
     """Возвращает свободный логин для формы регистрации."""
@@ -71,17 +90,7 @@ async def register(body: UserRegisterRequest, db: AsyncSession = Depends(get_db)
         )
 
     access_token, refresh_token = create_tokens(user)
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        user=UserResponse(
-            id=user.id,
-            email=user.email,
-            name=user.name,
-            role=user.role,
-            created_at=user.created_at,
-        ),
-    )
+    return _create_token_response(user, access_token, refresh_token)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -95,17 +104,7 @@ async def login(body: UserLoginRequest, db: AsyncSession = Depends(get_db)):
         )
 
     access_token, refresh_token = create_tokens(user)
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        user=UserResponse(
-            id=user.id,
-            email=user.email,
-            name=user.name,
-            role=user.role,
-            created_at=user.created_at,
-        ),
-    )
+    return _create_token_response(user, access_token, refresh_token)
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -127,17 +126,7 @@ async def refresh(body: RefreshTokenRequest, db: AsyncSession = Depends(get_db))
             detail="Пользователь не найден",
         )
 
-    return TokenResponse(
-        access_token=new_access,
-        refresh_token=new_refresh,
-        user=UserResponse(
-            id=user.id,
-            email=user.email,
-            name=user.name,
-            role=user.role,
-            created_at=user.created_at,
-        ),
-    )
+    return _create_token_response(user, new_access, new_refresh)
 
 
 @router.get("/me", response_model=UserResponse)
@@ -152,13 +141,7 @@ async def get_me(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Пользователь не найден",
         )
-    return UserResponse(
-        id=user.id,
-        email=user.email,
-        name=user.name,
-        role=user.role,
-        created_at=user.created_at,
-    )
+    return _create_user_response(user)
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)

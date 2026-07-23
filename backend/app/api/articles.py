@@ -57,6 +57,40 @@ class ArticleUpdateRequest(BaseModel):
     category: Optional[str] = None
 
 
+def _create_article_response(article, user=None):
+    """Создает ответ для статьи с автором."""
+    author = None
+    if user:
+        author = ArticleAuthorResponse(id=user.id, name=user.name)
+    
+    return ArticleDetailResponse(
+        id=article.id,
+        title=article.title,
+        preview=article.preview,
+        content=article.content,
+        category=article.category,
+        author=author,
+        created_at=article.created_at.isoformat(),
+        updated_at=article.updated_at.isoformat(),
+    )
+
+
+def _create_article_item_response(article, user=None):
+    """Создает ответ для статьи (список) с автором."""
+    author = None
+    if user:
+        author = ArticleAuthorResponse(id=user.id, name=user.name)
+    
+    return ArticleItemResponse(
+        id=article.id,
+        title=article.title,
+        preview=article.preview,
+        category=article.category,
+        author=author,
+        created_at=article.created_at.isoformat(),
+    )
+
+
 @router.get("/", response_model=List[ArticleItemResponse])
 async def list_articles(
     limit: int = Query(10, ge=1, le=50),
@@ -73,6 +107,7 @@ async def list_articles(
         articles = await search_articles(db, query=search.strip(), limit=limit, offset=offset)
     else:
         articles = await get_articles(db, limit=limit, offset=offset)
+    
     result = []
     for article in articles:
         author = None
@@ -82,14 +117,7 @@ async def list_articles(
                 author = ArticleAuthorResponse(id=user.id, name=user.name)
 
         result.append(
-            ArticleItemResponse(
-                id=article.id,
-                title=article.title,
-                preview=article.preview,
-                category=article.category,
-                author=author,
-                created_at=article.created_at.isoformat(),
-            )
+            _create_article_item_response(article, author)
         )
     return result
 
@@ -110,16 +138,7 @@ async def get_article(
         if user:
             author = ArticleAuthorResponse(id=user.id, name=user.name)
 
-    return ArticleDetailResponse(
-        id=article.id,
-        title=article.title,
-        preview=article.preview,
-        content=article.content,
-        category=article.category,
-        author=author,
-        created_at=article.created_at.isoformat(),
-        updated_at=article.updated_at.isoformat(),
-    )
+    return _create_article_response(article, author)
 
 
 async def _require_author(db: AsyncSession, user_id: str) -> User:
@@ -153,18 +172,7 @@ async def create_article_endpoint(
     )
 
     user = await get_user_by_id(db, user_id)
-    author = ArticleAuthorResponse(id=user.id, name=user.name) if user else None
-
-    return ArticleDetailResponse(
-        id=article.id,
-        title=article.title,
-        preview=article.preview,
-        content=article.content,
-        category=article.category,
-        author=author,
-        created_at=article.created_at.isoformat(),
-        updated_at=article.updated_at.isoformat(),
-    )
+    return _create_article_response(article, user)
 
 
 @router.patch("/{article_id}", response_model=ArticleDetailResponse)
@@ -188,18 +196,7 @@ async def update_article_endpoint(
         )
 
     user = await get_user_by_id(db, user_id)
-    author = ArticleAuthorResponse(id=user.id, name=user.name) if user else None
-
-    return ArticleDetailResponse(
-        id=article.id,
-        title=article.title,
-        preview=article.preview,
-        content=article.content,
-        category=article.category,
-        author=author,
-        created_at=article.created_at.isoformat(),
-        updated_at=article.updated_at.isoformat(),
-    )
+    return _create_article_response(article, user)
 
 
 @router.delete("/{article_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -23,7 +23,7 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# ─── User ───────────────────────────────────────────────────────────────────
+# ─── Пользователь ──────────────────────────────────────────────────────────────
 
 class User(Base):
     __tablename__ = "users"
@@ -35,12 +35,12 @@ class User(Base):
     role = Column(String(20), nullable=False, default="user")  # "user" | "author"
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
-    # Relationships
+    # Связи
     saved_properties = relationship("SavedProperty", back_populates="user", cascade="all, delete-orphan")
     articles = relationship("Article", back_populates="author", cascade="all, delete-orphan")
 
 
-# ─── Saved Properties ───────────────────────────────────────────────────────
+# ─── Сохраненные объекты ──────────────────────────────────────────────────────
 
 class SavedProperty(Base):
     __tablename__ = "saved_properties"
@@ -51,11 +51,11 @@ class SavedProperty(Base):
     property_data = Column(JSON, nullable=False)  # полные данные объекта
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
-    # Relationships
+    # Связи
     user = relationship("User", back_populates="saved_properties")
 
 
-# ─── Articles ───────────────────────────────────────────────────────────────
+# ─── Статьи ─────────────────────────────────────────────────────────────────────
 
 class Article(Base):
     __tablename__ = "articles"
@@ -70,7 +70,7 @@ class Article(Base):
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
 
-    # Relationships
+    # Связи
     author = relationship("User", back_populates="articles")
 
     __table_args__ = (
