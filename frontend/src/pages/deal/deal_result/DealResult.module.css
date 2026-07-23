@@ -1,22 +1,23 @@
 .page {
-  padding-top: var(--mantine-spacing-xl);
-  padding-bottom: calc(var(--mantine-spacing-xl) * 2);
+	padding-top: var(--mantine-spacing-xl);
+	padding-bottom: calc(var(--mantine-spacing-xl) * 2);
 }
 
 .riskSection {
-  background: var(--sc-surface);
-  border-color: var(--sc-border-strong) !important;
-  box-shadow: var(--sc-shadow);
+	background: var(--sc-surface);
+	border-color: var(--sc-border-strong) !important;
+	box-shadow: var(--sc-shadow);
 }
 
 .riskItem {
-  background: var(--sc-page);
-  border-color: var(--sc-border) !important;
+	background: var(--sc-page);
+	border-color: var(--sc-border) !important;
 }
 
 .consultationText {
-  padding: var(--mantine-spacing-sm);
-  border-radius: var(--mantine-radius-sm);
-  background: color-mix(in srgb, var(--mantine-color-yellow-1) 70%, transparent);
-  border-left: 3px solid var(--mantine-color-yellow-6);
+	padding: var(--mantine-spacing-sm);
+	border-radius: var(--mantine-radius-sm);
+	background: color-mix(in srgb, var(--mantine-color-gray-1) 50%, transparent);
+	border-left: 3px solid var(--mantine-color-gray-4);
+	color: var(--mantine-color-gray-7);
 }

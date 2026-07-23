@@ -4,6 +4,7 @@ import { IconAlertCircle } from '@tabler/icons-react'
 import type { NearbyResponse } from '../../../api/nearby'
 import { buildTwoGisMapWithPointsSrcDoc, isValidCoordinates } from '../../../lib/map'
 import { buildPlaceMarker } from './nearbyPlaceUtils'
+import { NearbyBadPointsList } from './NearbyBadPointsList'
 
 type NearbyPlacesMapProps = {
 	lat: number
@@ -38,7 +39,7 @@ export function NearbyPlacesMap({
 	lat,
 	lon,
 	address,
-	height = 320,
+	height = 400,
 	nearbyData = null,
 	loading = false,
 	error = null,
@@ -69,8 +70,8 @@ export function NearbyPlacesMap({
 					<Title order={4}>Окружение на карте</Title>
 					<Text size='sm' c='dimmed'>
 						Зелёные точки — всё, что делает жизнь удобной и повышает ликвидность жилья. Красные точки — возможен
-						дискомфорт: шум, запахи или загрязнение. Рекомендуется обратить внимание. Наведитесь на точку — увидите
-						тип объекта, нажмите — подробности.
+						дискомфорт: шум, запахи или загрязнение. Рекомендуется обратить внимание. Наведитесь на точку — увидите тип
+						объекта, нажмите — подробности.
 					</Text>
 				</div>
 
@@ -100,7 +101,7 @@ export function NearbyPlacesMap({
 						<Box
 							style={{
 								width: '100%',
-								height,
+								height: height,
 								borderRadius: 'var(--mantine-radius-md)',
 								overflow: 'hidden',
 								border: '1px solid var(--sc-border)',
@@ -114,6 +115,8 @@ export function NearbyPlacesMap({
 								style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#e8eef3' }}
 							/>
 						</Box>
+
+						{nearbyData?.bad && nearbyData.bad.length > 0 && <NearbyBadPointsList places={nearbyData.bad} />}
 					</>
 				)}
 			</Stack>

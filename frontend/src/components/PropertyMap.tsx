@@ -9,7 +9,7 @@ type PropertyMapProps = BoxProps & {
 	height?: number | string
 }
 
-export function PropertyMap({ lat, lon, address, title, height = 280, ...boxProps }: PropertyMapProps) {
+export function PropertyMap({ lat, lon, address, title, height = 400, ...boxProps }: PropertyMapProps) {
 	return (
 		<Box {...boxProps}>
 			{title && (
@@ -25,13 +25,7 @@ export function PropertyMap({ lat, lon, address, title, height = 280, ...boxProp
 					height,
 				}}
 			>
-				<TwoGisMap
-					lat={lat ?? 0}
-					lon={lon ?? 0}
-					address={address}
-					title={title ?? address}
-					height={height}
-				/>
+				<TwoGisMap lat={lat ?? 0} lon={lon ?? 0} address={address} title={title ?? address} height={height} />
 			</Box>
 		</Box>
 	)

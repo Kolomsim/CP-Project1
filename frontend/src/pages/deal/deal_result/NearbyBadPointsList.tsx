@@ -24,9 +24,6 @@ function BadPointItem({ place }: { place: NearbyPlace }) {
 							{typeLabel}: {name}
 						</Text>
 					</Stack>
-					<Badge color='red' variant='light'>
-						Негативный фактор
-					</Badge>
 				</Group>
 				<Text size='sm' className={classes.consultationText}>
 					{getPlaceConsequence(place)}

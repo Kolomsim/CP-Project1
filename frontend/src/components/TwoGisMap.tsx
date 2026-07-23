@@ -11,7 +11,7 @@ type TwoGisMapProps = {
 	className?: string
 }
 
-export function TwoGisMap({ lat, lon, address, title, height = 280, className }: TwoGisMapProps) {
+export function TwoGisMap({ lat, lon, address, title, height = 400, className }: TwoGisMapProps) {
 	const cssHeight = typeof height === 'number' ? `${height}px` : height
 
 	const srcDoc = useMemo(() => {

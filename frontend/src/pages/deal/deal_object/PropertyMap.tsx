@@ -15,7 +15,7 @@ export function PropertyMap({ lat, lon, address }: PropertyMapProps) {
 				Карта
 			</Text>
 			<Box className={classes.mapFrame}>
-				<TwoGisMap lat={lat} lon={lon} address={address} title={address} height={280} />
+				<TwoGisMap lat={lat} lon={lon} address={address} title={address} height={400} />
 			</Box>
 		</Box>
 	)

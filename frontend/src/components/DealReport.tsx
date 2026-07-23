@@ -300,7 +300,7 @@ export default function DealReport({
 						</Stack>
 					)}
 
-					{!nearby.loading && badNearbyPlaces.length > 0 && <NearbyBadPointsList places={badNearbyPlaces} />}
+					{/* {!nearby.loading && badNearbyPlaces.length > 0 && <NearbyBadPointsList places={badNearbyPlaces} />} */}
 
 					{allFindings.length === 0 && !nearby.loading && badNearbyPlaces.length === 0 && (
 						<Text size='sm' c='dimmed'>
@@ -310,7 +310,6 @@ export default function DealReport({
 				</Stack>
 			</Paper>
 
-			<PropertyPreviewCard property={result.property} />
 			<NearbyPlacesMap
 				lat={result.property.location.lat}
 				lon={result.property.location.lon}
