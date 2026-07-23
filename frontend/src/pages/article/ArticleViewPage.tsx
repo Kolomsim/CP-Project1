@@ -15,7 +15,7 @@ export default function ArticleViewPage() {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
-	const isAuthor = user?.role === 'author'
+	const isAuthor = user?.role === 'author' || user?.role === 'admin'
 
 	useEffect(() => {
 		if (!articleId) return
