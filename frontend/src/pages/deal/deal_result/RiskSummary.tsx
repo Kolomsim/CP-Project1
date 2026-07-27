@@ -26,11 +26,11 @@ function getRatingColor(rating: string) {
 }
 
 function getSeverityColor(severity: DealRisk['severity']) {
-	if (severity === 'высокий') {
+	if (severity === 'красный флаг') {
 		return 'red'
 	}
 
-	if (severity === 'средний') {
+	if (severity === 'желтый флаг') {
 		return 'orange'
 	}
 

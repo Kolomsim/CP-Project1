@@ -36,13 +36,19 @@ export function getRiskLevelLabel(level: string): string {
 	switch (level) {
 		case 'low':
 		case 'green':
-			return 'Низкий'
+		case 'низкий':
+		case 'зеленый флаг':
+			return 'Зеленый флаг'
 		case 'medium':
 		case 'yellow':
-			return 'Средний'
+		case 'средний':
+		case 'желтый флаг':
+			return 'Желтый флаг'
 		case 'high':
 		case 'red':
-			return 'Высокий'
+		case 'высокий':
+		case 'красный флаг':
+			return 'Красный флаг'
 		default:
 			return level
 	}

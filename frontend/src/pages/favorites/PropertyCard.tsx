@@ -1,7 +1,7 @@
 import { ActionIcon, Badge, Box, Card, Group, Loader, Stack, Text, Tooltip } from '@mantine/core'
 import { IconBuildingSkyscraper, IconHeart, IconHeartFilled, IconMapPin, IconReload } from '@tabler/icons-react'
 import type { PropertyPreview, DealRating } from '../../types/property'
-import { formatPrice, getRatingClassName } from '../../utils/format'
+import { formatPrice, getRatingClassName, getRiskLevelLabel } from '../../utils/format'
 import classes from './PropertyCard.module.css'
 
 export interface PropertyCardProps {
@@ -85,7 +85,7 @@ export function PropertyCard({
 				{/* Рейтинг */}
 				<div className={`${classes.ratingBadge} ${getRatingClassName(rating.level, ratingClassMap)}`}>
 					<span className={classes.ratingDot} />
-					{rating.label}
+					{getRiskLevelLabel(rating.level)}
 				</div>
 
 				{/* Мета информация */}

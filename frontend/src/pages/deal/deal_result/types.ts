@@ -1,6 +1,6 @@
 import type { PropertyPreview } from '../deal_object/types'
 
-export type RiskSeverity = 'высокий' | 'средний' | 'низкий'
+export type RiskSeverity = 'красный флаг' | 'желтый флаг' | 'зеленый флаг'
 
 export type DealRisk = {
 	type: string

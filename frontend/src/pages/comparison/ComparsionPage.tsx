@@ -62,11 +62,11 @@ function extractPropertyWithRating(dbId: string, data: Record<string, unknown>):
 	} else {
 		const ratingLabel =
 			saved.overallRating === 'Не рекомендуется' || saved.overallRating === 'Обратите внимание'
-				? 'Высокий риск'
+				? 'Красный флаг'
 				: saved.overallRating === 'Требуется проверка'
-					? 'Средний риск'
-					: 'Низкий риск'
-		const ratingLevel = ratingLabel === 'Высокий риск' ? 'high' : ratingLabel === 'Средний риск' ? 'medium' : 'low'
+					? 'Желтый флаг'
+					: 'Зеленый флаг'
+		const ratingLevel = ratingLabel === 'Красный флаг' ? 'high' : ratingLabel === 'Желтый флаг' ? 'medium' : 'low'
 		rating = {
 			score: saved.criticalCount > 0 ? 30 : saved.riskCount > 0 ? 60 : 90,
 			level: ratingLevel,

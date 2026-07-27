@@ -1,7 +1,7 @@
 import { Card, Group, Stack, Text, Image } from '@mantine/core'
 import { IconPhoto, IconArrowUp, IconArrowDown, IconMinus } from '@tabler/icons-react'
 import type { PropertyPreview, DealRating } from '../../types/property'
-import { formatPrice, getRatingClassName } from '../../utils/format'
+import { formatPrice, getRatingClassName, getRiskLevelLabel } from '../../utils/format'
 import classes from './ComparisonCard.module.css'
 
 export interface ComparisonCardProps {
@@ -89,7 +89,7 @@ export function ComparisonCard({ property, rating, side, comparisons }: Comparis
 				{/* Rating */}
 				<div className={`${classes.ratingBadge} ${getRatingClassName(rating.level, ratingClassMap)}`}>
 					<span className={classes.ratingDot} />
-					{rating.label}
+					{getRiskLevelLabel(rating.level)}
 				</div>
 
 				{/* Description — растягивается под самый длинный */}

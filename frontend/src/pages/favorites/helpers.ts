@@ -64,11 +64,11 @@ export function extractPropertyAndRating(data: Record<string, unknown>): {
 
 	const ratingLabel =
 		saved.overallRating === 'Не рекомендуется' || saved.overallRating === 'Обратите внимание'
-			? 'Высокий риск'
+			? 'Красный флаг'
 			: saved.overallRating === 'Требуется проверка'
-				? 'Средний риск'
-				: 'Низкий риск'
-	const ratingLevel = ratingLabel === 'Высокий риск' ? 'high' : ratingLabel === 'Средний риск' ? 'medium' : 'low'
+				? 'Желтый флаг'
+				: 'Зеленый флаг'
+	const ratingLevel = ratingLabel === 'Красный флаг' ? 'high' : ratingLabel === 'Желтый флаг' ? 'medium' : 'low'
 
 	return {
 		property: mapToPropertyPreview(saved.property),

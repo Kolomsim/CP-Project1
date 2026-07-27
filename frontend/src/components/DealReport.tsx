@@ -3,7 +3,6 @@ import { Alert, Anchor, Badge, Button, Group, Paper, Stack, Text, Title, Tooltip
 import { IconAlertCircle, IconExternalLink, IconHeart, IconHeartFilled, IconQuestionMark } from '@tabler/icons-react'
 import { Link } from 'react-router'
 import classes from '../pages/deal/deal_result/DealResult.module.css'
-import { PropertyPreviewCard } from '../pages/deal/deal_object/PropertyPreviewCard'
 import { savePropertyToFavorites } from '../api/deal'
 import { useAuth } from '../context/AuthContext'
 import { getRiskLevelLabel } from '../utils/format'
@@ -11,7 +10,6 @@ import type { DealCheckResult, DealRisk } from '../pages/deal/deal_result/types'
 import type { ChecklistFinding, ChecklistReport } from '../pages/deal/deal_checklist/types'
 import { severityColor } from '../pages/deal/deal_checklist/utils'
 import { NearbyPlacesMap } from '../pages/deal/deal_result/NearbyPlacesMap'
-import { NearbyBadPointsList } from '../pages/deal/deal_result/NearbyBadPointsList'
 import { useNearbyPlaces } from '../pages/deal/deal_result/useNearbyPlaces'
 
 type DealReportProps = {
@@ -24,8 +22,8 @@ type DealReportProps = {
 const AUTH_SAVE_HINT = 'чтобы сохранить в избранное или сравнивать объекты недвижимости между собой — войдите в аккаунт'
 
 function getSeverityColor(severity: DealRisk['severity']) {
-	if (severity === 'высокий') return 'red'
-	if (severity === 'средний') return 'orange'
+	if (severity === 'красный флаг') return 'red'
+	if (severity === 'желтый флаг') return 'orange'
 	return 'blue'
 }
 

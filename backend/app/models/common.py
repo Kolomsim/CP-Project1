@@ -6,9 +6,9 @@ class PropertyType(str, Enum):
     FLAT_OLD = "вторичка"
 
 class RiskLevel(str, Enum):
-    HIGH = "высокий"
-    MEDIUM = "средний"
-    LOW = "низкий"
+    HIGH = "красный флаг"
+    MEDIUM = "желтый флаг"
+    LOW = "зеленый флаг"
 
 class Citizenship(str, Enum):
     RUSSIAN_FEDERATION = "Россия"
