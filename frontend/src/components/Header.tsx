@@ -79,24 +79,26 @@ export function Header() {
 								</Menu.Target>
 								<Menu.Dropdown>
 									<Menu.Label>Ваш логин</Menu.Label>
-									<Menu.Item
-										closeMenuOnClick={false}
-										rightSection={
-											<CopyButton value={user.name} timeout={2000}>
-												{({ copied, copy }) => (
+
+									<CopyButton value={user.name} timeout={2000}>
+										{({ copied, copy }) => (
+											<Menu.Item
+												closeMenuOnClick={false}
+												onClick={copy}
+												rightSection={
 													<Tooltip label={copied ? 'Скопировано' : 'Скопировать'} withArrow position='right'>
-														<ActionIcon variant='subtle' color={copied ? 'brand' : 'gray'} size='sm' onClick={copy}>
+														<ActionIcon variant='subtle' color={copied ? 'brand' : 'gray'} size='sm'>
 															{copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
 														</ActionIcon>
 													</Tooltip>
-												)}
-											</CopyButton>
-										}
-									>
-										<Text size='sm' ff='monospace' fw={500}>
-											{user.name}
-										</Text>
-									</Menu.Item>
+												}
+											>
+												<Text size='sm' ff='monospace' fw={500}>
+													{user.name}
+												</Text>
+											</Menu.Item>
+										)}
+									</CopyButton>
 									<Menu.Divider />
 									<Menu.Item leftSection={<IconLogout size={16} />} color='red' onClick={logout}>
 										Выйти

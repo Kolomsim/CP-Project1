@@ -52,6 +52,7 @@ export default function RegisterForm({
 							{({ copied, copy }) => (
 								<Tooltip label={copied ? 'Скопировано' : 'Скопировать логин'} withArrow>
 									<ActionIcon
+										type='button'
 										variant='subtle'
 										color={copied ? 'teal' : 'gray'}
 										onClick={copy}
