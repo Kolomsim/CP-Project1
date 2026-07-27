@@ -156,9 +156,20 @@ function FindingItem({ finding }: { finding: ChecklistFinding }) {
 						{finding.severity === 'red' ? 'Красный флаг' : 'Жёлтый флаг'}
 					</Badge>
 				</Group>
-				<Text size='sm' className={classes.consultationText}>
-					{finding.consultation}
-				</Text>
+				<div className={classes.consultationText}>
+					<Text size='sm'>{finding.consultation}</Text>
+					{finding.links && finding.links.length > 0 && (
+						<Stack gap={4} mt='xs'>
+							{finding.links.map((link, idx) => (
+								<Text key={idx} size='xs'>
+									<Anchor href={link.href} target='_blank' rel='noopener noreferrer'>
+										{link.label}
+									</Anchor>
+								</Text>
+							))}
+						</Stack>
+					)}
+				</div>
 			</Stack>
 		</Paper>
 	)

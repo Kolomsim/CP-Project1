@@ -1,4 +1,4 @@
-import { Alert, Badge, Group, Paper, Stack, Text, Title } from '@mantine/core'
+import { Alert, Anchor, Badge, Group, Paper, Stack, Text, Title } from '@mantine/core'
 import { IconAlertCircle, IconAlertTriangle, IconCircleCheck } from '@tabler/icons-react'
 import type { ChecklistFinding, ChecklistReport } from '../deal_checklist/types'
 import { severityColor, verdictColor, verdictLabel } from '../deal_checklist/utils'
@@ -41,13 +41,13 @@ function FindingItem({ finding }: { finding: ChecklistFinding }) {
 				</Group>
 				<div className={classes.consultationText}>
 					<Text size='sm'>{finding.consultation}</Text>
-					{'links' in finding && (finding as any).links?.length > 0 && (
+					{finding.links && finding.links.length > 0 && (
 						<Stack gap={4} mt='xs'>
-							{(finding as any).links.map((lnk: { href: string; label: string }, idx: number) => (
+							{finding.links.map((link, idx) => (
 								<Text key={idx} size='xs'>
-									<a href={lnk.href} target='_blank' rel='noopener noreferrer'>
-										{lnk.label}
-									</a>
+									<Anchor href={link.href} target='_blank' rel='noopener noreferrer'>
+										{link.label}
+									</Anchor>
 								</Text>
 							))}
 						</Stack>

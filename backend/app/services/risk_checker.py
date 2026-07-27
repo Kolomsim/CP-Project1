@@ -192,7 +192,7 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "включая детей. Также действуют ограничения на тип и состояние жилья."
             ),
             "recommendation": "Проверьте требования ПФР и подготовьте нотариальное обязательство о выделении долей детям.",
-            "article_link": "/kb",
+            "article_link": "/kb/e5f6cece-e7eb-4597-a210-c027ce56b07a",
         })
 
     if purchase_method == "Ипотека":
@@ -205,7 +205,7 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "сделку могут не одобрить."
             ),
             "recommendation": "Запросите свежую выписку из ЕГРН и убедитесь, что объект соответствует требованиям банка.",
-            "article_link": "/kb",
+            "article_link": "/kb/e1730c89-abe9-46a7-9e9b-b57c217f9fe7",
         })
 
     if purchase_method == "Государственная поддержка":
@@ -255,7 +255,7 @@ def _check_property_risks(property_data: Dict[str, Any]) -> List[Dict[str, Any]]
                 "Необходимо проверить, выделены ли доли детям."
             ),
             "recommendation": "Запросите у продавца документы о выделении долей детям или нотариальное обязательство.",
-            "article_link": "/kb",
+            "article_link": "/kb/e5f6cece-e7eb-4597-a210-c027ce56b07a",
         })
 
     if "наследств" in searchable_text:
@@ -265,7 +265,7 @@ def _check_property_risks(property_data: Dict[str, Any]) -> List[Dict[str, Any]]
             "title": "Объект получен по наследству",
             "description": "При покупке наследственного имущества важно проверить сроки и законность оформления прав.",
             "recommendation": "Запросите свидетельство о праве на наследство и убедитесь, что прошло достаточно времени для оспаривания.",
-            "article_link": "/kb",
+            "article_link": "/kb/6b003301-fcb5-4f8f-b5b0-617719836bc1",
         })
 
     return risks
