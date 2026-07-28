@@ -12,11 +12,11 @@ export type ArticleItem = {
 	category: string | null
 	author: ArticleAuthor | null
 	created_at: string
+	updated_at: string
 }
 
 export type ArticleDetail = ArticleItem & {
 	content: string
-	updated_at: string
 }
 
 export type ArticleCreatePayload = {

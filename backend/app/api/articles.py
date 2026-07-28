@@ -36,11 +36,11 @@ class ArticleItemResponse(BaseModel):
     category: Optional[str] = None
     author: Optional[ArticleAuthorResponse] = None
     created_at: str
+    updated_at: str
 
 
 class ArticleDetailResponse(ArticleItemResponse):
     content: str
-    updated_at: str
 
 
 class ArticleCreateRequest(BaseModel):
@@ -88,6 +88,7 @@ def _create_article_item_response(article, user=None):
         category=article.category,
         author=author,
         created_at=article.created_at.isoformat(),
+        updated_at=article.updated_at.isoformat(),
     )
 
 

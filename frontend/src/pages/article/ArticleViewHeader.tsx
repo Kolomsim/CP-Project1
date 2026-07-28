@@ -48,7 +48,7 @@ export default function ArticleViewHeader({ article, articleId, isAuthor }: Arti
 						</Text>
 						{article.updated_at !== article.created_at && (
 							<Text size='sm' c='dimmed'>
-								(ред. {new Date(article.updated_at).toLocaleDateString('ru-RU')})
+								(актуально на {new Date(article.updated_at).toLocaleDateString('ru-RU')})
 							</Text>
 						)}
 					</Group>
