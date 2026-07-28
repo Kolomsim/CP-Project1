@@ -11,7 +11,7 @@ export default function DealPage() {
 					Заполните форму для релевантной проверки
 				</Title>
 				<Text className={classes.description} size='xl' mt='xl' mb='xl'>
-					Узнайте о скрытых рисках недвижимости за 5 минут Ответьте на несколько вопросов о планируемой сделке. Наш
+					Узнайте о скрытых рисках недвижимости за 5 минут. Ответьте на несколько вопросов о планируемой сделке. Наш
 					алгоритм проанализирует вашу ситуацию, учтет данные ведомств и сформирует персональный отчет:
 				</Text>
 				<List
@@ -30,10 +30,13 @@ export default function DealPage() {
 					<List.Item>Пошаговый чек-лист: индивидуальный список документов именно для вашей сделки.</List.Item>
 				</List>
 
+				<Text className={classes.description} size='xs' mt='xs' mb='xs'>
+					Откройте заранее ссылку на интересующий объект на Циан.
+				</Text>
+
 				<Button className={classes.control} size='xl' radius='md' component={Link} to='/deal/deal_form'>
 					Начать
 				</Button>
-
 			</Container>
 		</div>
 	)
