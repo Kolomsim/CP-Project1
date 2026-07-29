@@ -1,6 +1,9 @@
 import re
 import json
 import logging
+import random
+import threading
+import time
 from curl_cffi import requests
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_message
 
@@ -14,6 +17,41 @@ logger = logging.getLogger(__name__)
 
 class ParserError(Exception):
     pass
+
+
+class _RequestThrottle:
+    """
+    Общий на процесс троттлер: не даёт парсеру стучаться в ЦИАН чаще,
+    чем реальный человек кликал бы по ссылкам. Это единственное, что
+    системно снижает частоту капчи — сама по себе смена User-Agent/TLS
+    профиля не помогает, если запросы идут пачками.
+    """
+
+    def __init__(self, min_interval: float = 4.0, jitter: float = 3.0):
+        self.min_interval = min_interval
+        self.jitter = jitter
+        self._lock = threading.Lock()
+        self._last_request_at = 0.0
+        self._cooldown_until = 0.0
+
+    def wait(self) -> None:
+        with self._lock:
+            now = time.monotonic()
+            floor = max(self._cooldown_until, self._last_request_at + self.min_interval)
+            delay = max(0.0, floor - now) + random.uniform(0, self.jitter)
+            self._last_request_at = now + delay
+        if delay > 0:
+            time.sleep(delay)
+
+    def register_captcha(self, cooldown: float = 90.0) -> None:
+        """После капчи выжидаем существенную паузу вместо немедленного повтора."""
+        with self._lock:
+            self._cooldown_until = time.monotonic() + cooldown + random.uniform(0, cooldown * 0.3)
+
+
+# Один троттлер на процесс — если у вас несколько инстансов парсера
+# в одном воркере, они всё равно не должны бомбить сайт параллельно.
+_cian_throttle = _RequestThrottle()
 
 
 def _extract_property_old_from_offer(offer_data: Dict[str, Any]) -> Optional[str]:
@@ -72,13 +110,18 @@ def _extract_property_old_from_offer(offer_data: Dict[str, Any]) -> Optional[str
 class CianListingParser:
     """Парсер для отдельных объявлений ЦИАН"""
 
-    # Chrome-профили ЦИАН часто отдаёт captcha; Safari проходит стабильнее.
-    _IMPERSONATE_PROFILES = (
-        "safari17_0",
-        "safari15_5",
-        "chrome124",
-        "chrome120",
-    )
+    # Один основной профиль + один запасной — не перебор фингерпринтов,
+    # а просто устойчивость к временной недоступности конкретного профиля
+    # в curl_cffi. Реальная защита от капчи ниже: троттлинг + одна
+    # персистентная сессия с cookies вместо новой на каждый запрос.
+    _PRIMARY_PROFILE = "safari17_0"
+    _FALLBACK_PROFILE = "chrome124"
+
+    # Сессия и её "разогрев" общие на класс: cookies и TLS-сессия,
+    # накопленные за предыдущие запросы, — то, что реально отличает
+    # обычного посетителя от скрипта, создающего новый клиент каждый раз.
+    _session: Optional["requests.Session"] = None
+    _session_lock = threading.Lock()
 
     def __init__(self):
         self.headers = {
@@ -93,6 +136,13 @@ class CianListingParser:
             'Sec-Fetch-User': '?1',
             'Cache-Control': 'max-age=0',
         }
+
+    @classmethod
+    def _get_session(cls, profile: str) -> "requests.Session":
+        with cls._session_lock:
+            if cls._session is None:
+                cls._session = requests.Session(impersonate=profile)
+            return cls._session
 
     @staticmethod
     def _is_captcha_page(html: str) -> bool:
@@ -129,45 +179,40 @@ class CianListingParser:
             raise Exception(f"Не удалось загрузить или разобрать страницу: {str(e)}")
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=8),
-        retry=retry_if_exception_message(match=".*(timed out|Timeout|Connection|captcha).*"),
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=1, min=3, max=10),
+        retry=retry_if_exception_message(match=".*(timed out|Timeout|Connection).*"),
         reraise=True,
     )
     def _fetch_page(self, url: str) -> str:
-        last_error: Exception | None = None
-        captcha_html: str | None = None
+        # Ждём своей очереди — не бьём ЦИАН чаще, чем "живой" пользователь.
+        _cian_throttle.wait()
 
-        for profile in self._IMPERSONATE_PROFILES:
+        for profile in (self._PRIMARY_PROFILE, self._FALLBACK_PROFILE):
             try:
-                session = requests.Session(impersonate=profile)
+                session = self._get_session(profile)
                 session.headers.update(self.headers)
                 response = session.get(url, timeout=45)
                 response.raise_for_status()
                 html = response.text
 
                 if self._is_captcha_page(html):
-                    logger.warning("ЦИАН вернул captcha для профиля %s", profile)
-                    captcha_html = html
-                    continue
+                    logger.warning("ЦИАН вернул captcha (профиль %s)", profile)
+                    _cian_throttle.register_captcha()
+                    # Не долбим сразу следующим профилем — это тоже похоже
+                    # на бота. Отдаём капча-страницу наверх как есть.
+                    return html
 
-                logger.info("Страница ЦИАН загружена через impersonate=%s", profile)
+                logger.info("Страница ЦИАН загружена (impersonate=%s)", profile)
                 return html
             except Exception as exc:
-                # Неподдерживаемый профиль в текущей версии curl_cffi — пробуем следующий.
                 message = str(exc).lower()
                 if "impersonat" in message and "not supported" in message:
                     logger.debug("Профиль %s не поддерживается: %s", profile, exc)
+                    with self._session_lock:
+                        self.__class__._session = None
                     continue
-                last_error = exc
-                logger.warning("Не удалось загрузить ЦИАН через %s: %s", profile, exc)
-
-        if captcha_html is not None:
-            # Пусть верхний уровень покажет понятную ошибку captcha.
-            return captcha_html
-
-        if last_error is not None:
-            raise last_error
+                raise
 
         raise Exception("Не удалось загрузить страницу ЦИАН")
     
