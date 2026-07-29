@@ -22,7 +22,7 @@ export default function HeroCTA() {
 					<Box className={classes.buttons}>
 						<Button
 							component={Link}
-							to='/deal/deal_form'
+							to='/deal'
 							className={classes.buttonPrimary}
 							size='lg'
 							leftSection={<IconShieldCheck size={20} />}

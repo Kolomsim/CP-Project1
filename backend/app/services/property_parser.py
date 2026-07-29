@@ -192,16 +192,15 @@ class CianListingParser:
             try:
                 session = self._get_session(profile)
                 session.headers.update(self.headers)
-                response = session.get(url, timeout=45)
+                response = session.get(url, timeout=30)
                 response.raise_for_status()
                 html = response.text
 
                 if self._is_captcha_page(html):
-                    logger.warning("ЦИАН вернул captcha (профиль %s)", profile)
+                    logger.warning("ЦИАН вернул captcha (профиль %s) — пробуем fallback", profile)
                     _cian_throttle.register_captcha()
-                    # Не долбим сразу следующим профилем — это тоже похоже
-                    # на бота. Отдаём капча-страницу наверх как есть.
-                    return html
+                    # Пробуем следующий профиль — возможно, он не забанен
+                    continue
 
                 logger.info("Страница ЦИАН загружена (impersonate=%s)", profile)
                 return html

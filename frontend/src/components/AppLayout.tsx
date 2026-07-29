@@ -3,6 +3,7 @@ import { Outlet } from 'react-router'
 import { Header } from './Header'
 import { Footer } from './Footer'
 import classes from './AppChrome.module.css'
+import { ScrollToTop } from '../components/ScrollToTop'
 
 export function AppLayout() {
 	return (
@@ -13,6 +14,7 @@ export function AppLayout() {
 
 			<AppShell.Main style={{ paddingBottom: '30px', height: '100%' }}>
 				<Container size='lg'>
+					<ScrollToTop />
 					<Outlet />
 				</Container>
 			</AppShell.Main>
