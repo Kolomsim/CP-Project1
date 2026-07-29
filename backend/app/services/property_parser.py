@@ -1,9 +1,6 @@
 import re
 import json
 import logging
-import random
-import threading
-import time
 from curl_cffi import requests
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_message
 
@@ -13,45 +10,12 @@ from bs4 import BeautifulSoup
 from app.utils.validators import validate_url, detect_platform, extract_id_from_url
 from app.config import config
 
+import time
+import random
 logger = logging.getLogger(__name__)
 
 class ParserError(Exception):
     pass
-
-
-class _RequestThrottle:
-    """
-    Общий на процесс троттлер: не даёт парсеру стучаться в ЦИАН чаще,
-    чем реальный человек кликал бы по ссылкам. Это единственное, что
-    системно снижает частоту капчи — сама по себе смена User-Agent/TLS
-    профиля не помогает, если запросы идут пачками.
-    """
-
-    def __init__(self, min_interval: float = 4.0, jitter: float = 3.0):
-        self.min_interval = min_interval
-        self.jitter = jitter
-        self._lock = threading.Lock()
-        self._last_request_at = 0.0
-        self._cooldown_until = 0.0
-
-    def wait(self) -> None:
-        with self._lock:
-            now = time.monotonic()
-            floor = max(self._cooldown_until, self._last_request_at + self.min_interval)
-            delay = max(0.0, floor - now) + random.uniform(0, self.jitter)
-            self._last_request_at = now + delay
-        if delay > 0:
-            time.sleep(delay)
-
-    def register_captcha(self, cooldown: float = 90.0) -> None:
-        """После капчи выжидаем существенную паузу вместо немедленного повтора."""
-        with self._lock:
-            self._cooldown_until = time.monotonic() + cooldown + random.uniform(0, cooldown * 0.3)
-
-
-# Один троттлер на процесс — если у вас несколько инстансов парсера
-# в одном воркере, они всё равно не должны бомбить сайт параллельно.
-_cian_throttle = _RequestThrottle()
 
 
 def _extract_property_old_from_offer(offer_data: Dict[str, Any]) -> Optional[str]:
@@ -108,25 +72,27 @@ def _extract_property_old_from_offer(offer_data: Dict[str, Any]) -> Optional[str
 
 
 class CianListingParser:
-    """Парсер для отдельных объявлений ЦИАН"""
+    """Парсер для отдельных объявлений ЦИАН (с усиленной защитой от капчи)"""
 
-    # Один основной профиль + один запасной — не перебор фингерпринтов,
-    # а просто устойчивость к временной недоступности конкретного профиля
-    # в curl_cffi. Реальная защита от капчи ниже: троттлинг + одна
-    # персистентная сессия с cookies вместо новой на каждый запрос.
-    _PRIMARY_PROFILE = "safari17_0"
-    _FALLBACK_PROFILE = "chrome124"
+    # Расширенный список профилей для ротации (пункт 1)
+    _IMPERSONATE_PROFILES = (
+        "safari17_0",
+        "safari15_5",
+        "chrome124",
+        "chrome120",
+        "firefox120",
+    )
 
-    # Сессия и её "разогрев" общие на класс: cookies и TLS-сессия,
-    # накопленные за предыдущие запросы, — то, что реально отличает
-    # обычного посетителя от скрипта, создающего новый клиент каждый раз.
-    _session: Optional["requests.Session"] = None
-    _session_lock = threading.Lock()
+    # Варианты Accept-Language для «прогрева» сессии (пункт 3)
+    _ACCEPT_LANGUAGES = (
+        "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+        "ru-RU,ru;q=0.9,en;q=0.8",
+        "ru,en;q=0.9",
+    )
 
     def __init__(self):
         self.headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
             'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
@@ -136,32 +102,28 @@ class CianListingParser:
             'Sec-Fetch-User': '?1',
             'Cache-Control': 'max-age=0',
         }
-
-    @classmethod
-    def _get_session(cls, profile: str) -> "requests.Session":
-        with cls._session_lock:
-            if cls._session is None:
-                cls._session = requests.Session(impersonate=profile)
-            return cls._session
+        # Пул прокси (пункт 2) – берём из конфигурации, если есть
+        self.proxy_list = getattr(config, 'PROXY_LIST', [])
 
     @staticmethod
     def _is_captcha_page(html: str) -> bool:
+        """Детектор капчи (пункт 5)"""
         lower = html.lower()
         if 'captcha - база объявлений циан' in lower:
             return True
         if '<title>captcha' in lower:
             return True
-        # Страница объявления всегда содержит один из этих маркеров.
         if '__next_data__' not in lower and '_cianconfig' not in lower and 'application/ld+json' not in lower:
             if 'captcha' in lower or 'доступ ограничен' in lower:
                 return True
         return False
 
     def parse_listing(self, url: str) -> Dict[str, Any]:
-        """Парсит объявление с использованием requests"""
+        """Парсит объявление с усиленной обработкой капчи и повторными попытками"""
         try:
             html = self._fetch_page(url)
             if self._is_captcha_page(html):
+                # Сюда попадаем только если все попытки дали капчу (retry уже отработал)
                 raise ParserError(
                     "ЦИАН запросил проверку (captcha). Подождите минуту и попробуйте снова."
                 )
@@ -176,44 +138,73 @@ class CianListingParser:
             raise
         except Exception as e:
             logger.error(f"Ошибка HTTP запроса или парсинга: {e}")
-            raise Exception(f"Не удалось загрузить или разобрать страницу: {str(e)}")
+            raise ParserError(f"Не удалось загрузить или разобрать страницу: {str(e)}")
 
     @retry(
-        stop=stop_after_attempt(2),
-        wait=wait_exponential(multiplier=1, min=3, max=10),
-        retry=retry_if_exception_message(match=".*(timed out|Timeout|Connection).*"),
+        stop=stop_after_attempt(5),                               # увеличенное число попыток
+        wait=wait_exponential(multiplier=2, min=3, max=30),       # экспоненциальная задержка (пункт 6)
+        retry=retry_if_exception_message(match=r".*(timed out|Timeout|Connection|captcha|403|block).*"),
+        after=lambda retry_state: logger.warning(
+            f"Retry #{retry_state.attempt_number} after {retry_state.outcome.exception()}"
+        ),
         reraise=True,
     )
     def _fetch_page(self, url: str) -> str:
-        # Ждём своей очереди — не бьём ЦИАН чаще, чем "живой" пользователь.
-        _cian_throttle.wait()
+        """
+        Загружает страницу с ротацией TLS-профилей, прокси и задержками.
+        При обнаружении капчи сразу выбрасывает исключение, чтобы retry перезапустил метод.
+        """
+        last_error: Exception | None = None
 
-        for profile in (self._PRIMARY_PROFILE, self._FALLBACK_PROFILE):
+        for profile in self._IMPERSONATE_PROFILES:
+            # 1. Случайная задержка перед каждой попыткой (пункт 4)
+            time.sleep(random.uniform(0.5, 2.0))
+
+            # 2. Случайный TLS-отпечаток из списка уже задан переменной profile
+            # 3. Прокси (пункт 2) – новый прокси для каждой попытки
+            proxies = self._get_random_proxy() if self.proxy_list else None
+
+            # 4. «Прогрев» сессии (пункт 3): случайный Accept-Language и Referer
+            headers = self.headers.copy()
+            headers['Accept-Language'] = random.choice(self._ACCEPT_LANGUAGES)
+            headers['Referer'] = 'https://www.cian.ru/'
+
             try:
-                session = self._get_session(profile)
-                session.headers.update(self.headers)
-                response = session.get(url, timeout=30)
+                session = requests.Session(impersonate=profile)
+                session.headers.update(headers)
+                response = session.get(url, timeout=45, proxies=proxies)
                 response.raise_for_status()
                 html = response.text
 
+                # 5. Немедленная проверка на капчу
                 if self._is_captcha_page(html):
-                    logger.warning("ЦИАН вернул captcha (профиль %s) — пробуем fallback", profile)
-                    _cian_throttle.register_captcha()
-                    # Пробуем следующий профиль — возможно, он не забанен
+                    logger.warning("ЦИАН вернул captcha для профиля %s", profile)
+                    # Продолжаем перебор профилей, возможно следующий сработает
                     continue
 
-                logger.info("Страница ЦИАН загружена (impersonate=%s)", profile)
+                logger.info("Страница ЦИАН загружена через impersonate=%s", profile)
                 return html
+
             except Exception as exc:
                 message = str(exc).lower()
                 if "impersonat" in message and "not supported" in message:
                     logger.debug("Профиль %s не поддерживается: %s", profile, exc)
-                    with self._session_lock:
-                        self.__class__._session = None
                     continue
-                raise
+                last_error = exc
+                logger.warning("Не удалось загрузить ЦИАН через %s: %s", profile, exc)
 
-        raise Exception("Не удалось загрузить страницу ЦИАН")
+        # Если все профили перебраны и везде капча – выбрасываем исключение для retry
+        if last_error is None:
+            # Все профили дали капчу, ошибок сети не было
+            raise ParserError("Все профили вернули captcha")
+        raise last_error  # сетевая ошибка
+
+    def _get_random_proxy(self) -> Optional[Dict[str, str]]:
+        """Возвращает случайный прокси из пула (пункт 2)"""
+        if not self.proxy_list:
+            return None
+        proxy = random.choice(self.proxy_list)
+        return {"http": proxy, "https": proxy}
     
     def _extract_data(self, soup: BeautifulSoup, html: str, url: str) -> Dict[str, Any]:
         """Извлекает данные из HTML"""
@@ -1125,4 +1116,3 @@ def _get_mock_property_data(platform: str, obj_id: str, url: str) -> Dict[str, A
         "market_category": _map_market_category(property_old),
         "is_verified": False,
     }
-
