@@ -5,8 +5,9 @@ SQLAlchemy ORM models for the database.
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Text, DateTime, Boolean, ForeignKey, JSON, Integer
+    Column, String, Text, DateTime, Boolean, ForeignKey, JSON, Integer, Index
 )
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -22,7 +23,7 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# ─── User ───────────────────────────────────────────────────────────────────
+# ─── Пользователь ──────────────────────────────────────────────────────────────
 
 class User(Base):
     __tablename__ = "users"
@@ -31,14 +32,15 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False, default="user")  # "user" | "author"
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
-    # Relationships
+    # Связи
     saved_properties = relationship("SavedProperty", back_populates="user", cascade="all, delete-orphan")
     articles = relationship("Article", back_populates="author", cascade="all, delete-orphan")
 
 
-# ─── Saved Properties ───────────────────────────────────────────────────────
+# ─── Сохраненные объекты ──────────────────────────────────────────────────────
 
 class SavedProperty(Base):
     __tablename__ = "saved_properties"
@@ -49,11 +51,11 @@ class SavedProperty(Base):
     property_data = Column(JSON, nullable=False)  # полные данные объекта
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
-    # Relationships
+    # Связи
     user = relationship("User", back_populates="saved_properties")
 
 
-# ─── Articles ───────────────────────────────────────────────────────────────
+# ─── Статьи ─────────────────────────────────────────────────────────────────────
 
 class Article(Base):
     __tablename__ = "articles"
@@ -64,8 +66,13 @@ class Article(Base):
     preview = Column(Text, nullable=True)
     content = Column(Text, nullable=False)
     category = Column(String(100), nullable=True)
+    search_vector = Column(TSVECTOR, nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
 
-    # Relationships
+    # Связи
     author = relationship("User", back_populates="articles")
+
+    __table_args__ = (
+        Index('ix_articles_search_vector', 'search_vector', postgresql_using='gin'),
+    )

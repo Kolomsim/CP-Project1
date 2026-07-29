@@ -47,11 +47,14 @@ function mapToPropertyPreview(src: DealPropertyPreview): PropertyPreview {
 	}
 }
 
-function extractPropertyWithRating(data: Record<string, unknown>): PropertyWithRating | null {
+function extractPropertyWithRating(dbId: string, data: Record<string, unknown>): PropertyWithRating | null {
 	const saved = data as unknown as SavedData | undefined
 	if (!saved?.property) return null
 
 	const property = mapToPropertyPreview(saved.property)
+	// Используем UUID из БД как основной id, чтобы разные записи об одном объекте
+	// не конфликтовали при выборе в сравнении
+	property.id = dbId
 
 	let rating: DealRating
 	if (saved.rating) {
@@ -59,11 +62,11 @@ function extractPropertyWithRating(data: Record<string, unknown>): PropertyWithR
 	} else {
 		const ratingLabel =
 			saved.overallRating === 'Не рекомендуется' || saved.overallRating === 'Обратите внимание'
-				? 'Высокий риск'
+				? 'Красный флаг'
 				: saved.overallRating === 'Требуется проверка'
-					? 'Средний риск'
-					: 'Низкий риск'
-		const ratingLevel = ratingLabel === 'Высокий риск' ? 'high' : ratingLabel === 'Средний риск' ? 'medium' : 'low'
+					? 'Желтый флаг'
+					: 'Зеленый флаг'
+		const ratingLevel = ratingLabel === 'Красный флаг' ? 'high' : ratingLabel === 'Желтый флаг' ? 'medium' : 'low'
 		rating = {
 			score: saved.criticalCount > 0 ? 30 : saved.riskCount > 0 ? 60 : 90,
 			level: ratingLevel,
@@ -88,7 +91,7 @@ export default function ComparisonPage() {
 			try {
 				const items = await fetchFavoriteProperties()
 				const mapped = items
-					.map(item => extractPropertyWithRating(item.property_data))
+					.map(item => extractPropertyWithRating(item.id, item.property_data))
 					.filter((p): p is PropertyWithRating => p !== null)
 				setAllProperties(mapped)
 			} catch (err) {
@@ -136,7 +139,7 @@ export default function ComparisonPage() {
 
 			{loading && (
 				<Stack align='center' py='xl'>
-					<Loader color='violet' size='md' />
+					<Loader color='brand' size='md' />
 					<Text size='sm' c='dimmed'>
 						Загрузка избранного...
 					</Text>

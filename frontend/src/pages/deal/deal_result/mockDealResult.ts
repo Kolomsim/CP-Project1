@@ -16,7 +16,7 @@ export async function fetchDealCheckResult(sessionId?: string): Promise<DealChec
     problems: [
       {
         type: 'bankruptcy',
-        severity: 'высокий',
+        severity: 'красный флаг',
         title: 'Владелец найден в реестре банкротства',
         description:
           'Покупка недвижимости у банкрота связана с риском оспаривания сделки арбитражным управляющим.',
@@ -26,7 +26,7 @@ export async function fetchDealCheckResult(sessionId?: string): Promise<DealChec
       },
       {
         type: 'realtor_rating',
-        severity: 'средний',
+        severity: 'желтый флаг',
         title: 'Низкий рейтинг риелтора',
         description:
           'Низкий рейтинг может указывать на участие агента в сомнительных сделках.',

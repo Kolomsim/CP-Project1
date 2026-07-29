@@ -1,0 +1,173 @@
+.bg {
+	background: var(--sc-page);
+	position: relative;
+}
+
+.bg::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background-image: radial-gradient(circle, #dce8d8 2px, transparent 2px);
+	background-size: 15px 15px;
+	background-position: 0 0;
+	opacity: 1;
+	pointer-events: none;
+	z-index: 0;
+}
+
+.section {
+	position: relative;
+	z-index: 1;
+	padding: 100px 20px;
+	text-align: center;
+}
+
+.header {
+	max-width: 900px;
+	margin: 0 auto 80px;
+}
+
+.title {
+	font-weight: 700;
+	color: var(--sc-ink);
+	font-size: 36px;
+	margin: 0;
+}
+
+.subtitle {
+	color: var(--sc-muted);
+	line-height: 1.6;
+	font-size: 20px;
+	margin: 16px 0 0;
+	font-weight: 510;
+}
+
+.cards {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 32px;
+	justify-content: center;
+	max-width: 1300px;
+	margin: 0 auto;
+	padding: 0 20px;
+}
+
+.card {
+	flex: 1;
+	min-width: 300px;
+	max-width: 400px;
+	background: white;
+	border-radius: 22px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+	transition: all 0.3s ease;
+	overflow: hidden;
+}
+
+.card:hover {
+	transform: translateY(-6px);
+	box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+}
+
+.cardBody {
+	padding: 32px;
+	display: flex;
+	gap: 16px;
+	align-items: flex-start;
+}
+
+.iconCircle {
+	width: 64px;
+	height: 64px;
+	border-radius: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.iconCircleGreen {
+	composes: iconCircle;
+	background: var(--sc-mint);
+}
+
+.iconCircleTeal {
+	composes: iconCircle;
+	background: #d1f0e8;
+}
+
+.iconCircleDarkGreen {
+	composes: iconCircle;
+	background: #dcfce7;
+}
+
+.icon {
+	font-size: 32px;
+}
+
+.iconCircleGreen .icon {
+	color: var(--sc-accent);
+}
+
+.iconCircleTeal .icon {
+	color: #0d9488;
+}
+
+.iconCircleDarkGreen .icon {
+	color: var(--sc-accent-deep);
+}
+
+.cardTitle {
+	font-weight: 700;
+	color: var(--sc-ink);
+	font-size: 22px;
+	margin: 0 0 12px 0;
+	text-align: left;
+}
+
+.cardDescription {
+	color: var(--sc-muted);
+	line-height: 1.7;
+	font-size: 16px;
+	margin: 0;
+	text-align: left;
+}
+
+@media (max-width: 768px) {
+	.section {
+		padding: 60px 16px;
+	}
+	.header {
+		margin-bottom: 48px;
+	}
+	.title {
+		font-size: 28px !important;
+	}
+	.subtitle {
+		font-size: 16px !important;
+	}
+	.cards {
+		gap: 20px;
+		padding: 0;
+	}
+	.card {
+		min-width: 100%;
+		max-width: 100%;
+	}
+	.cardBody {
+		padding: 24px;
+	}
+	.cardTitle {
+		font-size: 18px !important;
+	}
+	.cardDescription {
+		font-size: 14px !important;
+	}
+	.iconCircle {
+		width: 48px;
+		height: 48px;
+		border-radius: 12px;
+	}
+	.icon {
+		font-size: 24px;
+	}
+}

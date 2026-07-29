@@ -1,29 +1,22 @@
 import { Box, Text } from '@mantine/core'
-import { buildYandexMapEmbedUrl } from '../../../lib/map'
+import { TwoGisMap } from '../../../components/TwoGisMap'
 import classes from './DealObject.module.css'
 
 type PropertyMapProps = {
-  lat: number
-  lon: number
-  address: string
+	lat: number
+	lon: number
+	address: string
 }
 
 export function PropertyMap({ lat, lon, address }: PropertyMapProps) {
-  const mapSrc = buildYandexMapEmbedUrl({ lat, lon, address })
-
-  return (
-    <Box className={classes.mapSection}>
-      <Text size="sm" fw={600} mb="xs">
-        Карта
-      </Text>
-      <Box className={classes.mapFrame}>
-        <iframe
-          title={`Карта: ${address}`}
-          src={mapSrc}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-        />
-      </Box>
-    </Box>
-  )
+	return (
+		<Box className={classes.mapSection}>
+			<Text size='sm' fw={600} mb='xs'>
+				Карта
+			</Text>
+			<Box className={classes.mapFrame}>
+				<TwoGisMap lat={lat} lon={lon} address={address} title={address} height={400} />
+			</Box>
+		</Box>
+	)
 }

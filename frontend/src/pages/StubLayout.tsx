@@ -33,7 +33,7 @@ export function StubLayout({ title, description }: StubLayoutProps) {
 								style={{
 									borderRadius: 'var(--mantine-radius-md)',
 									fontWeight: pathname === to ? 600 : 400,
-									backgroundColor: pathname === to ? 'var(--mantine-color-violet-light)' : undefined,
+					backgroundColor: pathname === to ? 'var(--mantine-color-brand-1)' : undefined,
 								}}
 							>
 								{label}
@@ -52,7 +52,7 @@ export function StubLayout({ title, description }: StubLayoutProps) {
 								{description}
 							</Text>
 						)}
-						<Badge variant='light' color='violet' size='lg'>
+						<Badge variant='light' color='brand' size='lg'>
 							Страница-заглушка
 						</Badge>
 					</Stack>

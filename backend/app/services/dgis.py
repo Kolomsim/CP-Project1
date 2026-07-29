@@ -6,15 +6,6 @@ from app.config import config
 
 logger = logging.getLogger(__name__)
 
-# Типы объектов 2ГИС по умолчанию: организации (branch), здания, станции
-# (в т.ч. метро) и достопримечательности.
-#
-# Для инфраструктурных "плохих" категорий (ж/д, кладбище и т.п.) в nearby.py
-# передаётся более узкий набор типов БЕЗ "branch" — чтобы не ловить компании,
-# у которых просто похожее слово встречается в названии (например,
-# "ЖД-Строй" — строительная фирма, а не станция; "branch" — это как раз тип
-# для организаций/офисов, а не для физических объектов вроде станции или
-# кладбища).
 DEFAULT_PLACE_TYPES = "branch,building,station,station.metro,attraction"
 
 
@@ -30,30 +21,14 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 async def fetch_nearby_dgis(
-        client: httpx.AsyncClient,
-        lat: float,
-        lon: float,
-        radius: int,
-        search_query: str,
-        place_types: str = DEFAULT_PLACE_TYPES,
-        rubric_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    """
-    Запрос к 2GIS Search API v3.0.
-    Ищет организации/объекты вокруг точки и возвращает список с координатами,
-    рубриками, уникальным id объекта 2ГИС и расстоянием.
-
-    place_types — какие типы объектов 2GIS учитывать (см. DEFAULT_PLACE_TYPES
-                  и комментарий выше). Для точечной инфраструктуры без
-                  организаций передавайте набор без "branch".
-    rubric_id   — необязательный список id рубрик 2ГИС через запятую. Если
-                  задан, поиск идёт по точной категории 2ГИС, а не только по
-                  тексту — самый надёжный способ избежать ложных совпадений
-                  по названию ("точное совпадение"). id рубрик можно получить
-                  один раз через https://catalog.api.2gis.com/2.0/catalog/rubric/search
-                  и закэшировать у себя, чтобы не тратить лишние запросы.
-    """
-
-    # 2ГИС 3.0 ожидает одну строку с координатами в формате 'lon,lat'
+    client: httpx.AsyncClient,
+    lat: float,
+    lon: float,
+    radius: int,
+    search_query: str,
+    place_types: str = DEFAULT_PLACE_TYPES,
+    rubric_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     point = f"{lon},{lat}"
 
     params = {
@@ -61,7 +36,7 @@ async def fetch_nearby_dgis(
         "point": point,
         "radius": radius,
         "type": place_types,
-        "fields": "items.point,items.rubrics",  # id/name/address_name возвращаются по умолчанию
+        "fields": "items.point,items.rubrics",
         "sort": "distance",
     }
 
@@ -74,7 +49,7 @@ async def fetch_nearby_dgis(
     try:
         response = await client.get(
             "https://catalog.api.2gis.com/3.0/items",
-            params=params
+            params=params,
         )
         response.raise_for_status()
         data = response.json()
@@ -119,7 +94,6 @@ async def fetch_nearby_dgis(
         rubrics = [r.get("name", "") for r in item.get("rubrics", []) if r.get("name")]
         distance = haversine(lat, lon, lat_obj, lon_obj)
 
-        # добавим такое ограничение, потому что API может добавить с большим радиусом
         if distance <= radius:
             items.append({
                 "id": item_id,
@@ -128,7 +102,7 @@ async def fetch_nearby_dgis(
                 "lon": lon_obj,
                 "address": address,
                 "rubrics": rubrics,
-                "distance": distance
+                "distance": distance,
             })
 
     return items

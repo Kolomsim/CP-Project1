@@ -1,33 +1,21 @@
 import asyncio
-from fastapi import APIRouter, HTTPException, Query, Request
-from app.services.redis_client import get_redis_client
-from app.services.dgis import fetch_nearby_dgis, DEFAULT_PLACE_TYPES
-from app.services.classifier import classify_place, get_place_type
+import logging
+
+from fastapi import APIRouter, Query, Request
+
+from app.api.exceptions import BusinessError
 from app.config import config
 from app.models.property import NearbyPlace, NearbyResponse
-import logging
+from app.services.classifier import classify_place, get_place_consequence, get_place_type
+from app.services.dgis import DEFAULT_PLACE_TYPES, fetch_nearby_dgis
+from app.services.redis_client import cache_get, cache_set
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/nearby", tags=["nearby"])
 
-# Типы объектов БЕЗ организаций ("branch") — для категорий, где нужен сам
-# физический объект (станция, кладбище), а не любая компания, у которой
-# в названии просто встречается похожее слово (например, строительная
-# фирма "ЖД-Строй" не должна попадать в выдачу по запросу "железная
-# дорога"). Это фильтрация ещё на уровне запроса к API — до классификатора.
 INFRASTRUCTURE_ONLY_TYPES = "building,station,station.metro,attraction"
 
-# 1. ШИРОКИЕ ЗАПРОСЫ ДЛЯ 2ГИС.
-# Формат: (текст запроса, типы объектов для этого конкретного запроса).
-# types=None -> используется DEFAULT_PLACE_TYPES (включая организации).
-#
-# Категории объединены в минимально возможное число запросов (экономим
-# лимиты 2ГИС), но при этом покрывают весь список из ТЗ: детские сады,
-# школы, площадки, парки/скверы/набережные, спорт (в т.ч. ФОК/бассейн),
-# медицину, супермаркеты, метро и наземный транспорт — для "хороших";
-# и промышленность/ТЭЦ/очистные, свалки/полигоны, ж/д, ночные клубы/бары,
-# кладбища, аэропорт — для "плохих".
 API_GOOD_QUERIES = [
     ("школа лицей гимназия детский сад университет образование", None),
     ("парк сквер набережная", None),
@@ -56,11 +44,16 @@ async def fetch_nearby_2gis(
     radius: int = Query(config.DEFAULT_SEARCH_RADIUS, ge=500, le=5000),
     nocache: bool = False,
 ):
-    redis_client = get_redis_client()
+    if not config.DGIS_API_KEY:
+        raise BusinessError(
+            "Не настроен ключ 2ГИС. Добавьте DGIS_API_KEY в backend/.env",
+            status_code=503,
+        )
+
     cache_key = f"2gis_nearby:{lat:.3f}:{lon:.3f}:{radius}"
 
     if not nocache:
-        cached_data = redis_client.get(cache_key)
+        cached_data = cache_get(cache_key)
         if cached_data:
             response = NearbyResponse.model_validate_json(cached_data)
             response.cached = True
@@ -69,14 +62,12 @@ async def fetch_nearby_2gis(
     http_client = request.app.state.dgis_client
 
     good_tasks = [
-        fetch_nearby_dgis(http_client, lat, lon, radius, search_query=q,
-                           place_types=types or DEFAULT_PLACE_TYPES)
+        fetch_nearby_dgis(http_client, lat, lon, radius, search_query=q, place_types=types or DEFAULT_PLACE_TYPES)
         for q, types in API_GOOD_QUERIES
     ]
 
     bad_tasks = [
-        fetch_nearby_dgis(http_client, lat, lon, radius, search_query=q,
-                           place_types=types or DEFAULT_PLACE_TYPES)
+        fetch_nearby_dgis(http_client, lat, lon, radius, search_query=q, place_types=types or DEFAULT_PLACE_TYPES)
         for q, types in API_BAD_QUERIES
     ]
 
@@ -86,12 +77,6 @@ async def fetch_nearby_2gis(
     unique = {}
 
     def dedup_key(item):
-        # Уникальный id объекта из 2ГИС надёжнее координат: одна и та же
-        # организация может встретиться в двух разных запросах (например,
-        # и в "образование", и в "медицина"), а float-координаты в двух
-        # ответах API иногда отличаются в последнем знаке — из-за этого
-        # старый ключ по "lat_lon" изредка создавал дубликаты одного и
-        # того же объекта с чуть разным расстоянием.
         if item.get("id"):
             return f"id:{item['id']}"
         return f"coord:{round(item['lat'], 5)}_{round(item['lon'], 5)}"
@@ -122,14 +107,17 @@ async def fetch_nearby_2gis(
 
     good, bad = [], []
     for item, category in unique.values():
+        place_type = get_place_type(item.get("rubrics", []))
+        distance = round(item["distance"], 1)
         place = NearbyPlace(
             name=item["name"],
             address=item.get("address", ""),
             category=category,
-            type=get_place_type(item.get("rubrics", [])),
-            distance_meters=round(item["distance"], 1),
+            type=place_type,
+            distance_meters=distance,
             lat=item["lat"],
             lon=item["lon"],
+            consequence=get_place_consequence(place_type, distance, category),
         )
         if place.type != "other":
             if category == "good":
@@ -146,5 +134,5 @@ async def fetch_nearby_2gis(
         cached=False,
     )
 
-    redis_client.setex(cache_key, config.CACHE_TTL_SECONDS, response.model_dump_json())
+    cache_set(cache_key, response.model_dump_json(), config.CACHE_TTL_SECONDS)
     return response

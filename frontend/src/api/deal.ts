@@ -3,10 +3,10 @@ import { getDealSessionId } from '../lib/dealSession'
 import { mapApiPropertyToPreview, type ApiPropertyPreview } from '../lib/propertyMapper'
 import type { PropertyPreview } from '../pages/deal/deal_object/types'
 import type { DealCheckResult, DealRisk } from '../pages/deal/deal_result/types'
+import type { DeveloperAutoCheck } from '../pages/deal/deal_checklist/types'
 
 type BuyerInfoPayload = {
 	citizenship: string
-	type_of_property: string
 	purchase_method: string
 }
 
@@ -27,6 +27,8 @@ type ApiRisk = {
 	recommendation: string
 	article_link?: string | null
 	details?: string | null
+	auto_check?: boolean | null
+	check_url?: string | null
 }
 
 type CheckRisksResponse = {
@@ -42,11 +44,6 @@ const CITIZENSHIP_MAP: Record<string, string> = {
 	russian: 'Россия',
 	foreign: 'Украина',
 	none: 'Беларусь',
-}
-
-const TYPE_OF_PROPERTY_MAP: Record<string, string> = {
-	primary_market: 'новостройка',
-	secondary_market: 'вторичка',
 }
 
 const PURCHASE_METHOD_MAP: Record<string, string> = {
@@ -67,17 +64,14 @@ function mapRisk(risk: ApiRisk): DealRisk {
 		recommendation: risk.recommendation,
 		articleLink: risk.article_link ?? undefined,
 		details: risk.details ?? undefined,
+		autoCheck: risk.auto_check ?? undefined,
+		checkUrl: risk.check_url ?? undefined,
 	}
 }
 
-export async function saveBuyerInfo(form: {
-	citizenship: string
-	typeOfProperty: string
-	purchaseMethod: string
-}): Promise<string> {
+export async function saveBuyerInfo(form: { citizenship: string; purchaseMethod: string }): Promise<string> {
 	const payload: BuyerInfoPayload = {
 		citizenship: CITIZENSHIP_MAP[form.citizenship] ?? 'Россия',
-		type_of_property: TYPE_OF_PROPERTY_MAP[form.typeOfProperty] ?? 'вторичка',
 		purchase_method: PURCHASE_METHOD_MAP[form.purchaseMethod] ?? 'Сразу',
 	}
 
@@ -140,6 +134,19 @@ export async function fetchDealCheckResult(
 	}
 }
 
+/** Получить автоматические ответы на вопросы чек-листа застройщика из ФНС */
+export async function fetchDeveloperCheck(sessionId?: string): Promise<DeveloperAutoCheck> {
+	const resolvedSessionId = sessionId ?? getDealSessionId()
+	if (!resolvedSessionId) {
+		throw new Error('Сессия не найдена. Пройдите шаги сделки с начала.')
+	}
+
+	return apiRequest<DeveloperAutoCheck>('/deal/developer-check', {
+		method: 'POST',
+		body: JSON.stringify({ session_id: resolvedSessionId }),
+	})
+}
+
 type PropertyItemResponse = {
 	id: string
 	title: string
@@ -166,6 +173,12 @@ export async function fetchFavoriteProperties(): Promise<PropertyItemResponse[]>
 		method: 'GET',
 	})
 	return response.properties
+}
+
+export async function refreshFavoriteProperty(propertyId: string): Promise<PropertyItemResponse> {
+	return apiRequest<PropertyItemResponse>(`/properties/${propertyId}/refresh`, {
+		method: 'POST',
+	})
 }
 
 export async function deleteFavoriteProperty(propertyId: string): Promise<void> {

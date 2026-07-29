@@ -14,6 +14,7 @@ export const DEMO_PROPERTY: PropertyPreview = {
   totalFloors: 10,
   rooms: 1,
   propertyType: 'квартира',
+  marketCategory: 'вторичка',
   dealType: 'свободная продажа',
   description:
     'Уютная однокомнатная квартира в тихом районе. Рядом метро, школы и парк. Квартира в хорошем состоянии, готова к заселению.',
@@ -31,7 +32,7 @@ const SUPPORTED_PLATFORMS = [
   { pattern: /cian\.ru/i, name: 'ЦИАН' },
   { pattern: /avito\.ru/i, name: 'Авито' },
   { pattern: /domclick\.ru/i, name: 'Домклик' },
-  { pattern: /smartcheck\.ru/i, name: 'SmartCheck' },
+  { pattern: /smartcheck\.ru/i, name: 'СмартЧек' },
 ]
 
 export function isSupportedPropertyUrl(url: string): boolean {

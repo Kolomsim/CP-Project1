@@ -1,24 +1,24 @@
-import { Box, Card, Group, Stack, Text, Badge, Tooltip, ActionIcon, Image } from '@mantine/core'
-import {
-	IconHeart,
-	IconHeartFilled,
-	IconMapPin,
-	IconGitCompare,
-	IconBuildingSkyscraper,
-	IconPhoto,
-} from '@tabler/icons-react'
+import { ActionIcon, Badge, Box, Card, Group, Loader, Stack, Text, Tooltip } from '@mantine/core'
+import { IconBuildingSkyscraper, IconHeart, IconHeartFilled, IconMapPin, IconReload } from '@tabler/icons-react'
 import type { PropertyPreview, DealRating } from '../../types/property'
-import { formatPrice, getRatingClassName } from '../../utils/format'
+import { formatPrice, getRatingClassName, getRiskLevelLabel } from '../../utils/format'
 import classes from './PropertyCard.module.css'
 
 export interface PropertyCardProps {
 	property: PropertyPreview
 	rating: DealRating
 	isFavorite?: boolean
-	isCompared?: boolean
 	onToggleFavorite?: (id: string) => void
-	onToggleCompare?: (id: string) => void
 	onShowMap?: (property: PropertyPreview) => void
+	onRefresh?: () => void
+	isRefreshing?: boolean
+}
+
+function stopPropagation(fn: (...args: never[]) => void, ...args: Parameters<typeof fn>) {
+	return (e: React.MouseEvent) => {
+		e.stopPropagation()
+		fn(...args)
+	}
 }
 
 const ratingClassMap: Record<string, string> = {
@@ -31,19 +31,23 @@ export function PropertyCard({
 	property,
 	rating,
 	isFavorite = false,
-	isCompared = false,
 	onToggleFavorite,
-	onToggleCompare,
 	onShowMap,
+	onRefresh,
+	isRefreshing = false,
 }: PropertyCardProps) {
 	const pricePerMeter = Math.round(property.price / property.total_area)
-	const imageUrl = property.images?.[0]
 
 	return (
-		<Card withBorder padding={0} style={{ display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
-			{/* Фото */}
+		<Card
+			withBorder
+			padding={0}
+			className={classes.card}
+			style={{ display: 'flex', flexDirection: 'row', overflow: 'hidden' }}
+		>
+			{/* Иконка недвижимости */}
 			<Box
-				w={280}
+				w={200}
 				style={{
 					position: 'relative',
 					flexShrink: 0,
@@ -51,13 +55,9 @@ export function PropertyCard({
 					background: 'var(--mantine-color-gray-1)',
 				}}
 			>
-				{imageUrl ? (
-					<Image src={imageUrl} alt={property.title} h='100%' fit='cover' />
-				) : (
-					<div className={classes.imagePlaceholder}>
-						<IconPhoto size={48} stroke={1} />
-					</div>
-				)}
+				<div className={classes.imagePlaceholder}>
+					<IconBuildingSkyscraper size={64} stroke={1} className={classes.propertyIcon} />
+				</div>
 			</Box>
 
 			{/* Контент карточки */}
@@ -85,29 +85,12 @@ export function PropertyCard({
 				{/* Рейтинг */}
 				<div className={`${classes.ratingBadge} ${getRatingClassName(rating.level, ratingClassMap)}`}>
 					<span className={classes.ratingDot} />
-					{rating.label}
+					{getRiskLevelLabel(rating.level)}
 				</div>
-
-				{/* Описание */}
-				{property.description && (
-					<Text
-						size='sm'
-						c='dimmed'
-						style={{
-							display: '-webkit-box',
-							WebkitLineClamp: 2,
-							WebkitBoxOrient: 'vertical',
-							overflow: 'hidden',
-							lineHeight: 1.5,
-						}}
-					>
-						{property.description}
-					</Text>
-				)}
 
 				{/* Мета информация */}
 				<Group gap='xs' mt='auto'>
-					<Badge variant='light' color='gray' size='sm' leftSection={<IconBuildingSkyscraper size={12} stroke={1.5} />}>
+					<Badge variant='light' color='gray' size='sm'>
 						{property.rooms}-комн., {property.total_area} м²
 					</Badge>
 					<Badge variant='light' color='gray' size='sm'>
@@ -134,7 +117,7 @@ export function PropertyCard({
 						variant={isFavorite ? 'filled' : 'default'}
 						color={isFavorite ? 'red' : 'gray'}
 						size='lg'
-						onClick={() => onToggleFavorite?.(property.id)}
+						onClick={stopPropagation(() => onToggleFavorite?.(property.id))}
 						aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
 					>
 						{isFavorite ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
@@ -142,20 +125,25 @@ export function PropertyCard({
 				</Tooltip>
 
 				<Tooltip label='Открыть на карте'>
-					<ActionIcon variant='default' size='lg' onClick={() => onShowMap?.(property)} aria-label='Открыть на карте'>
+					<ActionIcon
+						variant='default'
+						size='lg'
+						onClick={stopPropagation(() => onShowMap?.(property))}
+						aria-label='Открыть на карте'
+					>
 						<IconMapPin size={18} />
 					</ActionIcon>
 				</Tooltip>
 
-				<Tooltip label={isCompared ? 'Убрать из сравнения' : 'Добавить к сравнению'}>
+				<Tooltip label='Обновить данные с Циана'>
 					<ActionIcon
-						variant={isCompared ? 'filled' : 'default'}
-						color={isCompared ? 'violet' : 'gray'}
+						variant='default'
 						size='lg'
-						onClick={() => onToggleCompare?.(property.id)}
-						aria-label={isCompared ? 'Убрать из сравнения' : 'Добавить к сравнению'}
+						disabled={isRefreshing}
+						onClick={stopPropagation(() => onRefresh?.())}
+						aria-label='Обновить данные с Циана'
 					>
-						<IconGitCompare size={18} />
+						{isRefreshing ? <Loader size='xs' color='gray' /> : <IconReload size={18} />}
 					</ActionIcon>
 				</Tooltip>
 			</Stack>

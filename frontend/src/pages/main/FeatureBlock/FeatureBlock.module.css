@@ -1,0 +1,212 @@
+/* ===== Базовый блок ===== */
+
+.section {
+	width: 100vw;
+	left: 50%;
+	right: 50%;
+	margin-left: -50vw;
+	margin-right: -50vw;
+	padding: clamp(3rem, 6vw, 5rem) 1.25rem;
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+}
+
+.inner {
+	position: relative;
+	z-index: 1;
+}
+
+.grid {
+	display: flex;
+	align-items: center;
+	gap: clamp(1.5rem, 4vw, 3rem);
+	width: 100%;
+}
+
+.gridColContent {
+	flex: 1 1 60%;
+	min-width: 0;
+}
+
+.gridColImage {
+	flex: 1 1 40%;
+	min-width: 0;
+	display: flex;
+	justify-content: center;
+}
+
+/* ===== Контент ===== */
+
+.content {
+	max-width: 36rem;
+}
+
+.title {
+	font-family: 'Manrope', system-ui, sans-serif;
+	font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	line-height: 1.15;
+	color: var(--sc-ink);
+}
+
+.description {
+	font-size: clamp(0.95rem, 1.6vw, 1.08rem);
+	line-height: 1.6;
+	color: var(--sc-muted);
+}
+
+/* ===== Список возможностей ===== */
+
+.features {
+	margin-top: 0.25rem;
+}
+
+.featureRow {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	padding: 0.35rem 0;
+}
+
+.checkIcon {
+	background: var(--sc-accent) !important;
+	color: #fff !important;
+	flex-shrink: 0;
+}
+
+.featureText {
+	font-size: 0.95rem;
+	line-height: 1.45;
+	color: var(--sc-ink);
+}
+
+/* ===== Кнопки / доп. контент ===== */
+
+.actions {
+	margin-top: 0.5rem;
+}
+
+/* Кнопка по умолчанию (mint) */
+.button {
+	background: var(--sc-accent) !important;
+	border: none !important;
+	color: #fff !important;
+	font-weight: 600;
+	transition:
+		transform 0.2s ease,
+		background-color 0.2s ease,
+		box-shadow 0.2s ease;
+	box-shadow: 0 8px 20px rgba(47, 158, 102, 0.25);
+}
+
+.button:hover {
+	background: #247a4f !important;
+	transform: translateY(-2px);
+	box-shadow: 0 12px 24px rgba(36, 122, 79, 0.3);
+}
+
+/* ===== Картинка ===== */
+
+.imageWrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+}
+
+.image {
+	width: 100%;
+	max-width: 380px;
+	height: auto;
+	border-radius: var(--mantine-radius-lg);
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+	object-fit: contain;
+	background: #ffffff;
+	padding: 0.75rem;
+}
+
+/* ===== Цветовые варианты ===== */
+
+/* Мятный (по умолчанию) */
+.variantMint {
+	--block-bg: var(--sc-mint);
+	--block-accent: var(--sc-accent);
+	background: linear-gradient(180deg, var(--block-bg) 0%, var(--block-bg) 50%, #eef6e4 80%, transparent 100%);
+	border-bottom: 1px solid var(--sc-border);
+}
+
+/* Кремовый */
+.variantCream {
+	--block-bg: #fef9ef;
+	--block-accent: #d4a843;
+	background: linear-gradient(180deg, var(--block-bg) 0%, var(--block-bg) 50%, #fdf3e0 80%, transparent 100%);
+	border-bottom: 1px solid #f0e4d0;
+}
+
+.variantCream .checkIcon {
+	background: var(--block-accent) !important;
+}
+
+.variantCream .button {
+	background: #d4a843 !important;
+	box-shadow: 0 8px 20px rgba(212, 168, 67, 0.25);
+}
+
+.variantCream .button:hover {
+	background: #b8922e !important;
+	box-shadow: 0 12px 24px rgba(184, 146, 46, 0.3);
+}
+
+/* Лавандовый */
+.variantLavender {
+	--block-bg: #f5f0ff;
+	--block-accent: #8b6fd6;
+	background: linear-gradient(180deg, var(--block-bg) 0%, var(--block-bg) 50%, #ede6ff 80%, transparent 100%);
+	border-bottom: 1px solid #ddd6f0;
+}
+
+.variantLavender .checkIcon {
+	background: var(--block-accent) !important;
+}
+
+.variantLavender .button {
+	background: #8b6fd6 !important;
+	box-shadow: 0 8px 20px rgba(139, 111, 214, 0.25);
+}
+
+.variantLavender .button:hover {
+	background: #7258c0 !important;
+	box-shadow: 0 12px 24px rgba(114, 88, 192, 0.3);
+}
+
+/* ===== Адаптив ===== */
+
+@media (max-width: 48em) {
+	.section {
+		padding: 2.5rem 1rem;
+	}
+
+	.grid {
+		flex-direction: column;
+	}
+
+	.content {
+		max-width: 100%;
+	}
+
+	.image {
+		max-width: 260px;
+	}
+
+	.imageWrapper {
+		margin-bottom: 0.5rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.image {
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+	}
+}

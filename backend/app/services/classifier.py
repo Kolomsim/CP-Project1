@@ -18,7 +18,7 @@ rubric_id прямо в запросе к API (см. dgis.fetch_nearby_dgis(rubr
 """
 
 import re
-from typing import List
+from typing import List, Optional
 
 # ==================== ПОДПИСИ ДЛЯ get_place_type ====================
 # Порядок важен: сначала длинные/специфичные фразы, потом короткие, —
@@ -193,4 +193,114 @@ def get_place_type(rubrics: List[str]) -> str:
     if rubrics:
         return rubrics[0]
     return "other"
-    
+
+
+def _format_distance_ru(meters: float) -> str:
+    if meters < 1000:
+        return f"{int(round(meters))} м"
+    return f"{meters / 1000:.1f} км"
+
+
+def _type_matches(place_type: str, keywords: List[str]) -> bool:
+    type_lower = place_type.lower()
+    return any(kw in type_lower for kw in keywords)
+
+
+def get_place_consequence(place_type: str, distance_meters: float, category: str) -> Optional[str]:
+    """
+    Возвращает пояснение о возможных последствиях для негативных объектов окружения.
+    """
+    if category != "bad":
+        return None
+
+    distance = _format_distance_ru(distance_meters)
+    close = distance_meters < 500
+    very_close = distance_meters < 300
+
+    if _type_matches(place_type, ["железнодорож", "депо", "вокзал"]):
+        if very_close:
+            return (
+                f"Железная дорога в {distance} от недвижимости — вероятен постоянный шум "
+                "поездов, вибрация и сквозняки от движения составов."
+            )
+        if close:
+            return (
+                f"Железная дорога в {distance} от недвижимости — возможен шум поездов, "
+                "особенно ночью и при открытых окнах."
+            )
+        return (
+            f"Железная дорога в {distance} от недвижимости — в отдельные часы возможен "
+            "шум от проходящих составов."
+        )
+
+    if _type_matches(place_type, ["завод", "фабрик", "комбинат"]):
+        if close:
+            return (
+                f"Промышленный объект в {distance} от недвижимости — возможны шум, запахи "
+                "и выбросы, особенно при ветре в сторону дома."
+            )
+        return (
+            f"Промышленный объект в {distance} от недвижимости — при определённых условиях "
+            "возможны шум и запахи от производства."
+        )
+
+    if _type_matches(place_type, ["тэц", "котельн", "очистн"]):
+        if close:
+            return (
+                f"ТЭЦ или котельная в {distance} от недвижимости — возможны шум оборудования, "
+                "дым и запах топлива."
+            )
+        return (
+            f"ТЭЦ или котельная в {distance} от недвижимости — при определённых условиях "
+            "возможны шум и запахи."
+        )
+
+    if _type_matches(place_type, ["свалк", "полигон", "мусоросжиг"]):
+        if close:
+            return (
+                f"Свалка или полигон в {distance} от недвижимости — вероятны неприятные запахи, "
+                "пыль и привлечение грызунов."
+            )
+        return (
+            f"Свалка или полигон в {distance} от недвижимости — при ветре возможны запахи "
+            "и повышенная запылённость."
+        )
+
+    if _type_matches(place_type, ["ночной клуб", "бар", "клуб"]):
+        if close:
+            return (
+                f"Бар или ночной клуб в {distance} от недвижимости — вероятен шум по вечерам "
+                "и ночам, особенно в выходные."
+            )
+        return (
+            f"Бар или ночной клуб в {distance} от недвижимости — в вечернее время возможен "
+            "шум от посетителей и музыки."
+        )
+
+    if _type_matches(place_type, ["кладбищ"]):
+        return (
+            f"Кладбище в {distance} от недвижимости — это может снижать "
+            "комфорт проживания и ликвидность жилья."
+        )
+
+    if _type_matches(place_type, ["аэропорт"]):
+        if close:
+            return (
+                f"Аэропорт в {distance} от недвижимости — вероятен шум самолётов при взлёте "
+                "и посадке, особенно днём."
+            )
+        return (
+            f"Аэропорт в {distance} от недвижимости — возможен периодический шум "
+            "авиатранспорта."
+        )
+
+    if close:
+        return (
+            f"Негативный фактор в {distance} от недвижимости — возможен дискомфорт: "
+            "шум, запахи или загрязнение окружающей среды."
+        )
+
+    return (
+        f"Негативный фактор в {distance} от недвижимости — рекомендуется уточнить "
+        "возможное влияние на комфорт проживания."
+    )

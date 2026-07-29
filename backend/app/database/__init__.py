@@ -2,8 +2,12 @@
 Database session and engine configuration.
 """
 
+import uuid
 import logging
+from datetime import datetime, timezone
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from passlib.context import CryptContext
 from app.config import config
 
 logger = logging.getLogger(__name__)
@@ -21,6 +25,8 @@ async_session_factory = async_sessionmaker(
     expire_on_commit=False,
 )
 
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 async def get_db() -> AsyncSession:
     """Dependency for getting a database session."""
@@ -35,12 +41,109 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
+async def _seed_default_author(db: AsyncSession):
+    """Создаёт учётную запись автора по умолчанию, если её ещё нет."""
+    from app.database.models import User
+
+    result = await db.execute(select(User).where(User.name == "author"))
+    existing = result.scalar_one_or_none()
+
+    if existing is not None:
+        logger.info("Default author already exists, skipping seed")
+        return
+
+    author = User(
+        id=str(uuid.uuid4()),
+        email="author@local.internal",
+        hashed_password=_pwd_context.hash("123456"),
+        name="author",
+        role="author",
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(author)
+    await db.flush()
+    logger.info("Default author created (login: author, password: 123456)")
+
+
+async def _ensure_schema(conn):
+    """Apply lightweight schema patches create_all does not handle (new columns)."""
+    from sqlalchemy import text
+
+    await conn.execute(
+        text(
+            "ALTER TABLE users "
+            "ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user'"
+        )
+    )
+
+    # Полнотекстовый поиск по статьям
+    await conn.execute(
+        text(
+            "ALTER TABLE articles "
+            "ADD COLUMN IF NOT EXISTS search_vector tsvector"
+        )
+    )
+    await conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_articles_search_vector "
+            "ON articles USING GIN(search_vector)"
+        )
+    )
+    await conn.execute(
+        text(
+            "CREATE OR REPLACE FUNCTION articles_search_vector_update() "
+            "RETURNS trigger AS $$ "
+            "BEGIN "
+            "    NEW.search_vector := to_tsvector("
+            "        'russian',"
+            "        coalesce(NEW.title, '') || ' ' || coalesce(NEW.content, '')"
+            "    ); "
+            "    RETURN NEW; "
+            "END; "
+            "$$ LANGUAGE plpgsql"
+        )
+    )
+    await conn.execute(
+        text(
+            "DROP TRIGGER IF EXISTS trg_articles_search_vector ON articles"
+        )
+    )
+    await conn.execute(
+        text(
+            "CREATE TRIGGER trg_articles_search_vector "
+            "BEFORE INSERT OR UPDATE ON articles "
+            "FOR EACH ROW "
+            "EXECUTE FUNCTION articles_search_vector_update()"
+        )
+    )
+    # Индексируем существующие статьи (если ещё не проиндексированы)
+    await conn.execute(
+        text(
+            "UPDATE articles "
+            "SET search_vector = to_tsvector('russian', coalesce(title, '') || ' ' || coalesce(content, '')) "
+            "WHERE search_vector IS NULL"
+        )
+    )
+
+
 async def init_db():
-    """Create all tables on startup."""
+    """Create all tables on startup and seed default data."""
     from app.database.models import Base
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _ensure_schema(conn)
     logger.info("Database tables created/verified")
+
+    # Создаём дефолтного автора в отдельной сессии
+    async with async_session_factory() as session:
+        try:
+            await _seed_default_author(session)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            logger.exception("Failed to seed default author")
+            raise
 
 
 async def close_db():

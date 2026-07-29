@@ -1,6 +1,7 @@
 # app/services/risk_checker.py
 
 import datetime
+import json
 import logging
 import asyncio
 from enum import Enum
@@ -12,6 +13,7 @@ from app.services.external_api import (
     check_fssp
     # check_arrests,
 )
+from app.services.nalog_parser import search_company as search_nalog_company
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,15 @@ def _field_value(value: Any) -> str:
     return str(value)
 
 
+def _is_primary_market(property_data: Optional[Dict[str, Any]]) -> bool:
+    """Первичный рынок (новостройка) — тот же критерий, что и чек-лист застройщика на фронте."""
+    if not property_data:
+        return False
+    market_category = property_data.get("market_category") or property_data.get("property_old") or ""
+    value = str(market_category).lower()
+    return "новостр" in value or "первич" in value
+
+
 async def check_all_risks(
     address: str,
     seller_name: str,
@@ -32,6 +43,7 @@ async def check_all_risks(
     cadastral_number: Optional[str] = None,
     buyer_info: Optional[Dict[str, Any]] = None,
     property_data: Optional[Dict[str, Any]] = None,
+    company_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Асинхронная проверка всех рисков. Выполняет параллельные запросы к внешним API.
@@ -60,7 +72,24 @@ async def check_all_risks(
     else:
         tasks.append(asyncio.sleep(0, result=None))
 
-    # 3. Аресты (если есть кадастровый номер)
+    # 3. Проверка компании в ФНС — только для новостроек (чек-лист застройщика)
+    should_check_nalog = (
+        company_name
+        and company_name not in ("", "Неизвестно")
+        and _is_primary_market(property_data)
+    )
+    logger.info(
+        f"[DEBUG] check_all_risks: company_name={company_name!r}, "
+        f"primary_market={_is_primary_market(property_data)}, should_check_nalog={should_check_nalog}"
+    )
+    if should_check_nalog:
+        logger.info(f"[DEBUG] Запускаем проверку компании в ФНС: {company_name}")
+        tasks.append(_check_company_nalog(company_name))
+    else:
+        logger.info("[DEBUG] Пропускаем проверку ФНС (не новостройка или нет названия компании)")
+        tasks.append(asyncio.sleep(0, result=None))
+
+    # 4. Аресты (если есть кадастровый номер)
     # if cadastral_number:
     #     tasks.append(check_arrests(cadastral_number))
     # else:
@@ -72,7 +101,8 @@ async def check_all_risks(
     # Обрабатываем результаты
     bankruptcy_data = results[0]
     fssp_data = results[1]
-    # arrest_data = results[2]  # Закомментировано, так как check_arrests отсутствует в tasks
+    nalog_data = results[2]
+    # arrest_data = results[3]  # Закомментировано
 
     # Формируем риски
     if bankruptcy_data and isinstance(bankruptcy_data, dict) and bankruptcy_data.get("is_bankrupt"):
@@ -94,6 +124,18 @@ async def check_all_risks(
             "recommendation": "Попросите продавца предоставить справку об отсутствии долгов из ФССП.",
             "details": f"Количество дел: {len(fssp_data.get('cases', []))}"
         })
+
+    # 3. Проверка компании в ФНС
+    logger.info(f"[DEBUG] Результат проверки ФНС: nalog_data={nalog_data}")
+    if nalog_data and isinstance(nalog_data, dict):
+        nalog_risks = nalog_data.get("risks", [])
+        logger.info(f"[DEBUG] Найдено рисков из ФНС: {len(nalog_risks)}")
+        risks.extend(nalog_risks)
+        
+        # Если нашли ИНН — сохраняем его для дальнейшего использования
+        found_inn = nalog_data.get("inn")
+        if found_inn and not inn:
+            inn = found_inn
 
     # arrest_data отсутствует, поэтому проверка arrest удалена
 
@@ -139,8 +181,6 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Локальные проверки на основе данных покупателя из анкеты."""
     risks: List[Dict[str, Any]] = []
     purchase_method = _field_value(buyer_info.get("purchase_method"))
-    type_of_property = _field_value(buyer_info.get("type_of_property"))
-    citizenship = _field_value(buyer_info.get("citizenship"))
 
     if purchase_method == "Материнский капитал":
         risks.append({
@@ -152,7 +192,7 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "включая детей. Также действуют ограничения на тип и состояние жилья."
             ),
             "recommendation": "Проверьте требования ПФР и подготовьте нотариальное обязательство о выделении долей детям.",
-            "article_link": "/kb",
+            "article_link": "/kb/e5f6cece-e7eb-4597-a210-c027ce56b07a",
         })
 
     if purchase_method == "Ипотека":
@@ -165,7 +205,7 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "сделку могут не одобрить."
             ),
             "recommendation": "Запросите свежую выписку из ЕГРН и убедитесь, что объект соответствует требованиям банка.",
-            "article_link": "/kb",
+            "article_link": "/kb/e1730c89-abe9-46a7-9e9b-b57c217f9fe7",
         })
 
     if purchase_method == "Государственная поддержка":
@@ -188,35 +228,7 @@ def _check_buyer_risks(buyer_info: Dict[str, Any]) -> List[Dict[str, Any]]:
             "article_link": "/kb",
         })
 
-    if type_of_property == "новостройка":
-        risks.append({
-            "type": "primary_market",
-            "severity": RiskLevel.MEDIUM,
-            "title": "Покупка на первичном рынке",
-            "description": "При покупке новостройки важно проверить застройщика, сроки сдачи и условия договора долевого участия.",
-            "recommendation": "Изучите проектную декларацию и историю сдачи объектов застройщика.",
-            "article_link": "/kb",
-        })
-
-    if type_of_property == "вторичка":
-        risks.append({
-            "type": "secondary_market",
-            "severity": RiskLevel.MEDIUM,
-            "title": "Покупка на вторичном рынке",
-            "description": "При покупке вторичного жилья важно проверить историю объекта, права собственников и отсутствие обременений.",
-            "recommendation": "Запросите свежую выписку из ЕГРН и проверьте всех зарегистрированных жильцов.",
-            "article_link": "/kb",
-        })
-
-    if citizenship and citizenship != "Россия":
-        risks.append({
-            "type": "foreign_citizenship",
-            "severity": RiskLevel.MEDIUM,
-            "title": "Покупатель — иностранный гражданин",
-            "description": "Для иностранных граждан могут действовать ограничения на покупку отдельных видов недвижимости.",
-            "recommendation": "Проверьте актуальные ограничения для вашего гражданства и типа объекта.",
-            "article_link": "/kb",
-        })
+    # foreign_citizenship не добавляем: покрывается чек-листом иностранного покупателя
 
     return risks
 
@@ -230,6 +242,9 @@ def _check_property_risks(property_data: Dict[str, Any]) -> List[Dict[str, Any]]
         str(property_data.get("title", "")),
     ]).lower()
 
+    # primary_market / secondary_market не добавляем: покрываются чек-листами
+    # застройщика (новостройка) и продавца (вторичка)
+
     if "материнск" in searchable_text and "капитал" in searchable_text:
         risks.append({
             "type": "maternity_capital_history",
@@ -240,7 +255,7 @@ def _check_property_risks(property_data: Dict[str, Any]) -> List[Dict[str, Any]]
                 "Необходимо проверить, выделены ли доли детям."
             ),
             "recommendation": "Запросите у продавца документы о выделении долей детям или нотариальное обязательство.",
-            "article_link": "/kb",
+            "article_link": "/kb/e5f6cece-e7eb-4597-a210-c027ce56b07a",
         })
 
     if "наследств" in searchable_text:
@@ -250,18 +265,7 @@ def _check_property_risks(property_data: Dict[str, Any]) -> List[Dict[str, Any]]
             "title": "Объект получен по наследству",
             "description": "При покупке наследственного имущества важно проверить сроки и законность оформления прав.",
             "recommendation": "Запросите свидетельство о праве на наследство и убедитесь, что прошло достаточно времени для оспаривания.",
-            "article_link": "/kb",
-        })
-
-    seller_name = str(property_data.get("seller", {}).get("name", ""))
-    if seller_name in ("", "Неизвестно"):
-        risks.append({
-            "type": "unknown_seller",
-            "severity": RiskLevel.LOW,
-            "title": "Данные продавца не определены",
-            "description": "Не удалось получить информацию о продавце из объявления.",
-            "recommendation": "Запросите у продавца паспортные данные и документы, подтверждающие право собственности.",
-            "article_link": "/kb",
+            "article_link": "/kb/6b003301-fcb5-4f8f-b5b0-617719836bc1",
         })
 
     return risks
@@ -344,3 +348,124 @@ def _generate_documents_checklist(risks: List[Dict[str, Any]]) -> List[Dict[str,
             unique_docs.append(doc)
 
     return unique_docs
+
+
+async def _check_company_nalog(company_name: str) -> Optional[Dict[str, Any]]:
+    """
+    Проверка компании в ФНС (Прозрачный бизнес).
+    Ищет компанию по названию и возвращает информацию о ней.
+    """
+    try:
+        company_info = await search_nalog_company(company_name)
+        if company_info is None:
+            return {
+                "inn": None,
+                "risks": [{
+                    "type": "company_not_found",
+                    "severity": RiskLevel.HIGH,
+                    "title": "Компания не найдена в реестре ФНС",
+                    "description": (
+                        f"Организация «{company_name}» не найдена в реестре "
+                        "юридических лиц ФНС. Это может означать, что компания "
+                        "не зарегистрирована или была ликвидирована."
+                    ),
+                    "recommendation": (
+                        "Проверьте название компании вручную на сайте "
+                        "pb.nalog.ru. Запросите у продавца ИНН и ОГРН."
+                    ),
+                    "auto_check": True,
+                    "check_url": "https://pb.nalog.ru/search.html",
+                }],
+            }
+        
+        risks = []
+        
+        # Проверка статуса: ликвидирована
+        if company_info.status and "ликвидирован" in company_info.status.lower():
+            risks.append({
+                "type": "company_liquidated",
+                "severity": RiskLevel.HIGH,
+                "title": "Компания ликвидирована",
+                "description": (
+                    f"Организация «{company_info.short_name}» имеет статус "
+                    f"«{company_info.status}». Сделка с ликвидированной "
+                    "компанией невозможна."
+                ),
+                "recommendation": (
+                    "Откажитесь от сделки. Ликвидированная организация "
+                    "не может быть продавцом недвижимости."
+                ),
+                "details": f"ИНН: {company_info.inn}, ОГРН: {company_info.ogrn}",
+                "auto_check": True,
+                "check_url": "https://pb.nalog.ru/search.html",
+            })
+        
+        # Проверка статуса: реорганизована
+        if company_info.status and "реорганизован" in company_info.status.lower():
+            risks.append({
+                "type": "company_reorganized",
+                "severity": RiskLevel.MEDIUM,
+                "title": "Компания реорганизована",
+                "description": (
+                    f"Организация «{company_info.short_name}» находится "
+                    f"в процессе реорганизации (статус: «{company_info.status}»). "
+                    "Требуется проверка правопреемника."
+                ),
+                "recommendation": (
+                    "Уточните, кто является правопреемником компании, "
+                    "и проверьте документы о переходе прав."
+                ),
+                "details": f"ИНН: {company_info.inn}",
+                "auto_check": True,
+                "check_url": "https://pb.nalog.ru/search.html",
+            })
+        
+        # Если компания не активна, но не ликвидирована и не реорганизована
+        if company_info.is_active is False and not risks:
+            risks.append({
+                "type": "company_inactive",
+                "severity": RiskLevel.HIGH,
+                "title": "Компания неактивна",
+                "description": (
+                    f"Организация «{company_info.short_name}» не является "
+                    f"действующей (статус: «{company_info.status}»)."
+                ),
+                "recommendation": (
+                    "Проверьте актуальный статус компании на сайте pb.nalog.ru."
+                ),
+                "details": f"ИНН: {company_info.inn}",
+                "auto_check": True,
+                "check_url": "https://pb.nalog.ru/search.html",
+            })
+        
+        # Если компания активна — добавляем информационный риск
+        if company_info.is_active and company_info.inn:
+            risks.append({
+                "type": "company_verified",
+                "severity": RiskLevel.LOW,
+                "title": "Компания найдена в реестре ФНС",
+                "description": (
+                    f"Организация «{company_info.short_name}» найдена в реестре "
+                    f"юридических лиц. Статус: «{company_info.status}». "
+                    f"ИНН: {company_info.inn}, ОГРН: {company_info.ogrn}."
+                ),
+                "recommendation": (
+                    "Рекомендуется дополнительно проверить компанию "
+                    "на наличие долгов и судебных дел."
+                ),
+                "details": (
+                    f"Дата регистрации: {company_info.registration_date}, "
+                    f"ОКВЭД: {company_info.okved}"
+                ),
+                "auto_check": True,
+                "check_url": "https://pb.nalog.ru/search.html",
+            })
+        
+        return {
+            "inn": company_info.inn,
+            "risks": risks,
+        }
+        
+    except Exception as e:
+        logger.error(f"Ошибка при проверке компании в ФНС: {e}")
+        return None

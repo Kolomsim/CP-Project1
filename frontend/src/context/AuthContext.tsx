@@ -1,12 +1,7 @@
-/**
- * Контекст аутентификации для всего приложения.
- * Предоставляет состояние пользователя и методы входа/выхода.
- */
-
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import type { User } from '../services/auth'
-import { loginUser, registerUser, getCurrentUser, logoutUser as logoutApi } from '../services/auth'
-import { getAccessToken, clearTokens } from '../services/api'
+import type { User } from '../api/auth'
+import { loginUser, registerUser, getCurrentUser, logoutUser as logoutApi } from '../api/auth'
+import { getAccessToken, clearTokens } from '../api/client'
 
 interface AuthContextValue {
 	user: User | null
@@ -23,7 +18,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<User | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 
-	// Проверяем, есть ли уже токен при загрузке
 	useEffect(() => {
 		const initAuth = async () => {
 			const token = getAccessToken()
@@ -36,7 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				const currentUser = await getCurrentUser()
 				setUser(currentUser)
 			} catch {
-				// Токен недействителен — очищаем
 				clearTokens()
 			} finally {
 				setIsLoading(false)

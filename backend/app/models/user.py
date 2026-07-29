@@ -47,6 +47,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     name: str
+    role: str
     created_at: datetime
 
 
@@ -69,4 +70,5 @@ class UserInDB(BaseModel):
     email: str
     hashed_password: str
     name: str
+    role: str = "user"
     created_at: datetime

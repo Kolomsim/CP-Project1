@@ -1,6 +1,8 @@
 import type { ComparisonResult } from '../pages/comparison/ComparisonCard'
-import type { PropertyWithRating } from '../mock/properties'
+import type { PropertyPreview } from '../types/property'
 import { formatPrice } from './format'
+
+type PropertyWithRating = PropertyPreview & { rating: unknown }
 
 export function buildComparisons(a: PropertyWithRating, b: PropertyWithRating): ComparisonResult[] {
 	return [

@@ -7,13 +7,31 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import User, SavedProperty, Article
 from app.config import config
 
 logger = logging.getLogger(__name__)
+
+import pymorphy3
+_morph = pymorphy3.MorphAnalyzer()
+
+
+def _lemmatize_query(text: str) -> str:
+    """Лемматизация поискового запроса: 'покупки квартир' → 'покупка квартира'
+
+    Приводит каждое слово к нормальной форме (именительный падеж, ед. число),
+    чтобы PostgreSQL tsquery мог сопоставить с tsvector статей.
+    """
+    words = text.strip().split()
+    lemmas = []
+    for word in words:
+        parsed = _morph.parse(word)[0]
+        if parsed.normal_form:
+            lemmas.append(parsed.normal_form)
+    return ' '.join(lemmas)
 
 
 # ─── User operations ────────────────────────────────────────────────────────
@@ -23,6 +41,7 @@ async def create_user(
     email: str,
     hashed_password: str,
     name: str,
+    role: str = "user",
 ) -> User:
     """Create a new user in the database."""
     user = User(
@@ -30,6 +49,7 @@ async def create_user(
         email=email,
         hashed_password=hashed_password,
         name=name,
+        role=role,
         created_at=datetime.now(timezone.utc),
     )
     db.add(user)
@@ -87,6 +107,37 @@ async def get_user_properties(db: AsyncSession, user_id: str) -> list[SavedPrope
     return list(result.scalars().all())
 
 
+async def get_property_by_url(db: AsyncSession, user_id: str, url: str) -> Optional[SavedProperty]:
+    """Find a saved property by URL for a specific user.
+
+    Использует PostgreSQL JSONB-оператор -> для поиска по вложенному полю
+    property_data -> property -> url.
+    """
+    from sqlalchemy import text
+
+    result = await db.execute(
+        text(
+            "SELECT * FROM saved_properties "
+            "WHERE user_id = :user_id "
+            "AND property_data #>> '{property,url}' = :url "
+            "ORDER BY created_at DESC LIMIT 1"
+        ),
+        {"user_id": user_id, "url": url},
+    )
+    row = result.mappings().first()
+    if row is None:
+        return None
+
+    # Восстанавливаем объект SavedProperty из строки результата
+    return SavedProperty(
+        id=row["id"],
+        user_id=row["user_id"],
+        title=row["title"],
+        property_data=row["property_data"],
+        created_at=row["created_at"],
+    )
+
+
 async def get_property_by_id(db: AsyncSession, property_id: str, user_id: str) -> Optional[SavedProperty]:
     """Get a single saved property by ID (scoped to user)."""
     result = await db.execute(
@@ -111,6 +162,36 @@ async def delete_property(db: AsyncSession, property_id: str, user_id: str) -> b
 
 
 # ─── Article operations ─────────────────────────────────────────────────────
+
+
+async def search_articles(
+    db: AsyncSession,
+    query: str,
+    limit: int = 10,
+    offset: int = 0,
+) -> list[Article]:
+    """Полнотекстовый поиск по статьям с русской морфологией.
+
+    Использует PostgreSQL tsvector/tsquery с русским словарём.
+    Запрос предварительно лемматизируется через pymorphy2 для учёта падежей.
+    Результаты сортируются по релевантности (ts_rank).
+    """
+    lemmatized = _lemmatize_query(query)
+    if not lemmatized:
+        return []
+
+    # Используем ORM select с полнотекстовым поиском через text()
+    from sqlalchemy import func, desc
+    ts_query = func.plainto_tsquery('russian', lemmatized)
+    stmt = (
+        select(Article)
+        .where(Article.search_vector.op('@@')(ts_query))
+        .order_by(desc(func.ts_rank(Article.search_vector, ts_query)))
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 async def create_article(
     db: AsyncSession,

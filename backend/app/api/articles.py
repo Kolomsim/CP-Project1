@@ -17,7 +17,9 @@ from app.services.db_service import (
     update_article,
     delete_article,
     get_user_by_id,
+    search_articles,
 )
+from app.database.models import User
 
 router = APIRouter(prefix="/api/articles", tags=["Articles"])
 
@@ -34,11 +36,11 @@ class ArticleItemResponse(BaseModel):
     category: Optional[str] = None
     author: Optional[ArticleAuthorResponse] = None
     created_at: str
+    updated_at: str
 
 
 class ArticleDetailResponse(ArticleItemResponse):
     content: str
-    updated_at: str
 
 
 class ArticleCreateRequest(BaseModel):
@@ -55,14 +57,58 @@ class ArticleUpdateRequest(BaseModel):
     category: Optional[str] = None
 
 
+def _create_article_response(article, user=None):
+    """Создает ответ для статьи с автором."""
+    author = None
+    if user:
+        author = ArticleAuthorResponse(id=user.id, name=user.name)
+    
+    return ArticleDetailResponse(
+        id=article.id,
+        title=article.title,
+        preview=article.preview,
+        content=article.content,
+        category=article.category,
+        author=author,
+        created_at=article.created_at.isoformat(),
+        updated_at=article.updated_at.isoformat(),
+    )
+
+
+def _create_article_item_response(article, user=None):
+    """Создает ответ для статьи (список) с автором."""
+    author = None
+    if user:
+        author = ArticleAuthorResponse(id=user.id, name=user.name)
+    
+    return ArticleItemResponse(
+        id=article.id,
+        title=article.title,
+        preview=article.preview,
+        category=article.category,
+        author=author,
+        created_at=article.created_at.isoformat(),
+        updated_at=article.updated_at.isoformat(),
+    )
+
+
 @router.get("/", response_model=List[ArticleItemResponse])
 async def list_articles(
     limit: int = Query(10, ge=1, le=50),
     offset: int = Query(0, ge=0),
+    search: Optional[str] = Query(None, description="Полнотекстовый поиск по статьям с учётом русской морфологии"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Возвращает список статей с информацией об авторе."""
-    articles = await get_articles(db, limit=limit, offset=offset)
+    """Возвращает список статей с информацией об авторе.
+
+    Если передан параметр search, выполняется полнотекстовый поиск
+    с использованием PostgreSQL tsvector/tsquery и лемматизации pymorphy2.
+    """
+    if search and search.strip():
+        articles = await search_articles(db, query=search.strip(), limit=limit, offset=offset)
+    else:
+        articles = await get_articles(db, limit=limit, offset=offset)
+    
     result = []
     for article in articles:
         author = None
@@ -72,14 +118,7 @@ async def list_articles(
                 author = ArticleAuthorResponse(id=user.id, name=user.name)
 
         result.append(
-            ArticleItemResponse(
-                id=article.id,
-                title=article.title,
-                preview=article.preview,
-                category=article.category,
-                author=author,
-                created_at=article.created_at.isoformat(),
-            )
+            _create_article_item_response(article, author)
         )
     return result
 
@@ -100,16 +139,20 @@ async def get_article(
         if user:
             author = ArticleAuthorResponse(id=user.id, name=user.name)
 
-    return ArticleDetailResponse(
-        id=article.id,
-        title=article.title,
-        preview=article.preview,
-        content=article.content,
-        category=article.category,
-        author=author,
-        created_at=article.created_at.isoformat(),
-        updated_at=article.updated_at.isoformat(),
-    )
+    return _create_article_response(article, author)
+
+
+async def _require_author(db: AsyncSession, user_id: str) -> User:
+    """Проверяет, что пользователь имеет роль author."""
+    user = await get_user_by_id(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if user.role != "author":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только авторы могут создавать и редактировать статьи",
+        )
+    return user
 
 
 @router.post("/", response_model=ArticleDetailResponse, status_code=status.HTTP_201_CREATED)
@@ -118,7 +161,8 @@ async def create_article_endpoint(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Создать новую статью (только для авторизованных пользователей)."""
+    """Создать новую статью (только для авторов)."""
+    await _require_author(db, user_id)
     article = await create_article(
         db=db,
         author_id=user_id,
@@ -129,18 +173,7 @@ async def create_article_endpoint(
     )
 
     user = await get_user_by_id(db, user_id)
-    author = ArticleAuthorResponse(id=user.id, name=user.name) if user else None
-
-    return ArticleDetailResponse(
-        id=article.id,
-        title=article.title,
-        preview=article.preview,
-        content=article.content,
-        category=article.category,
-        author=author,
-        created_at=article.created_at.isoformat(),
-        updated_at=article.updated_at.isoformat(),
-    )
+    return _create_article_response(article, user)
 
 
 @router.patch("/{article_id}", response_model=ArticleDetailResponse)
@@ -151,6 +184,7 @@ async def update_article_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     """Обновить статью (только для автора)."""
+    await _require_author(db, user_id)
     kwargs = {k: v for k, v in body.model_dump().items() if v is not None}
     if not kwargs:
         raise HTTPException(status_code=400, detail="Нет полей для обновления")
@@ -163,18 +197,7 @@ async def update_article_endpoint(
         )
 
     user = await get_user_by_id(db, user_id)
-    author = ArticleAuthorResponse(id=user.id, name=user.name) if user else None
-
-    return ArticleDetailResponse(
-        id=article.id,
-        title=article.title,
-        preview=article.preview,
-        content=article.content,
-        category=article.category,
-        author=author,
-        created_at=article.created_at.isoformat(),
-        updated_at=article.updated_at.isoformat(),
-    )
+    return _create_article_response(article, user)
 
 
 @router.delete("/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -184,6 +207,7 @@ async def delete_article_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     """Удалить статью (только для автора)."""
+    await _require_author(db, user_id)
     deleted = await delete_article(db, article_id, user_id)
     if not deleted:
         raise HTTPException(

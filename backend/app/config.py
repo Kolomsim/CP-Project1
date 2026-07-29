@@ -1,11 +1,14 @@
 import os
-from dotenv import load_dotenv
+from pathlib import Path
 from typing import Optional
 
-load_dotenv()
+from dotenv import load_dotenv
+
+# Загрузка .env файла из папки backend
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 class Config:
-    APP_NAME: str = os.getenv("APP_NAME", "SmartCheck Недвижимость")
+    APP_NAME: str = os.getenv("APP_NAME", "СмартЧек Недвижимость")
     APP_VERSION: str = os.getenv("APP_VERSION", "1.0.0")
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
@@ -14,13 +17,13 @@ class Config:
     PORT: int = int(os.getenv("PORT", 8000))
     RELOAD: bool = os.getenv("RELOAD", "True").lower() == "true"
 
-    # Database
+    # База данных
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
         "postgresql+asyncpg://smartcheck:smartcheck_secret@localhost:5432/smartcheck",
     )
 
-    # JWT Auth
+    # JWT аутентификация
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "smartcheck-jwt-secret-key-change-in-production-2026")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 60))
@@ -42,13 +45,14 @@ class Config:
     ROSREESTR_TIMEOUT: int = int(os.getenv("ROSREESTR_TIMEOUT", 15))
 
     # Кэширование
+    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", 86400))
     USE_REDIS: bool = os.getenv("USE_REDIS", "False").lower() == "true"
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+    # 2ГИС — поиск окружения объекта
     DGIS_API_KEY: str = os.getenv("DGIS_API_KEY", "")
     DGIS_SEARCH_URL: str = os.getenv("DGIS_SEARCH_URL", "https://catalog.api.2gis.com/3.0/items")
-    DEFAULT_SEARCH_RADIUS: int = int(os.getenv("DEFAULT_SEARCH_RADIUS", 1000))
-    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", 86400))
+    DEFAULT_SEARCH_RADIUS: int = int(os.getenv("DEFAULT_SEARCH_RADIUS", 2000))
 
     # Флаг использования моков (для разработки, но в проде = False)
     USE_MOCK_EXTERNAL_API: bool = os.getenv("USE_MOCK_EXTERNAL_API", "False").lower() == "true"
